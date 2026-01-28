@@ -7,7 +7,7 @@ interface DiagnosticConsoleProps {
 }
 
 export const DiagnosticConsole: React.FC<DiagnosticConsoleProps> = ({ logs, isOpen }) => {
-  if (!isOpen) return null;
+  if (!isOpen || !logs) return null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl animate-in fade-in duration-500">
@@ -24,8 +24,8 @@ export const DiagnosticConsole: React.FC<DiagnosticConsoleProps> = ({ logs, isOp
           {logs.map((log, i) => (
             <div key={i} className="flex gap-4 items-center animate-in slide-in-from-left-4 duration-300">
               <span className="text-cyan-800">[{new Date().toLocaleTimeString([], { hour12: false })}]</span>
-              <span className={log.includes('FIX') || log.includes('RESTORED') ? 'text-green-400 font-bold' : 'text-cyan-400'}>
-                > {log}
+              <span className={log && typeof log === 'string' && (log.includes('FIX') || log.includes('RESTORED')) ? 'text-green-400 font-bold' : 'text-cyan-400'}>
+                > {log || 'TRANSIT_NULL'}
               </span>
             </div>
           ))}

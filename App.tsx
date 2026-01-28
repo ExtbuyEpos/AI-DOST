@@ -166,7 +166,14 @@ const App: React.FC = () => {
 
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(() => {
     const saved = localStorage.getItem('avatar_config');
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') return parsed;
+      } catch (e) {
+        console.error("Failed to parse avatar_config", e);
+      }
+    }
     return {
       hairstyle: 'Cyber-Fade', faceType: 'Android-Prime', themeColor: '#22d3ee', accessory: 'Neural-Link', identity: 'GERVIS', voiceName: 'Charon'
     };
@@ -295,8 +302,13 @@ const App: React.FC = () => {
     ];
     let i = 0;
     const interval = setInterval(() => {
-      setDiagnosticLogs(prev => [...prev, stages[i]]);
-      i++;
+      if (i < stages.length) {
+        const currentStage = stages[i];
+        if (currentStage) {
+          setDiagnosticLogs(prev => [...prev, currentStage]);
+        }
+        i++;
+      }
       if (i >= stages.length) {
         clearInterval(interval);
         setTimeout(() => setIsDiagnosticOpen(false), 2000);
@@ -451,7 +463,9 @@ const App: React.FC = () => {
       }
     } catch (e: any) {
       console.error(e);
-      if (e.message?.includes("Requested entity was not found") && window.aistudio) await window.aistudio.openSelectKey();
+      if (e?.message?.includes && e.message.includes("Requested entity was not found") && window.aistudio) {
+        await window.aistudio.openSelectKey();
+      }
       setLastCommand("VEO_SYNTH_FAILED");
     } finally { setRenderingMessage(null); }
   };
@@ -758,6 +772,8 @@ const App: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <MediaVault assets={assets} />
     </div>
   );
 };
