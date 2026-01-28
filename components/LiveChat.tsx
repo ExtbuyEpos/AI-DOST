@@ -2,6 +2,13 @@
 import React, { useRef, useEffect } from 'react';
 import { TranscriptionLine } from '../types';
 
+// Defining and exporting ChatOptions to resolve the missing export error in App.tsx
+export interface ChatOptions {
+  mode?: 'FAST' | 'THINKING' | 'STANDARD';
+  aspectRatio?: "1:1" | "3:4" | "4:3" | "9:16" | "16:9";
+  imageSize?: "1K" | "2K" | "4K";
+}
+
 interface LiveChatProps {
   messages: TranscriptionLine[];
   isOpen: boolean;

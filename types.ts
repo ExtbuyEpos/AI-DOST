@@ -121,3 +121,23 @@ export interface TrainingSession {
   totalEpochs: number;
   metrics: number[];
 }
+
+// Fix: Added GitHubRepo interface to resolve import error in GitHubNode.tsx
+export interface GitHubRepo {
+  owner: string;
+  name: string;
+  description: string;
+  stars: number;
+  forks: number;
+  languages: string[];
+  lastSync: number;
+}
+
+// Fix: Added CodeAnalysis interface to resolve import error in GitHubNode.tsx
+export interface CodeAnalysis {
+  filePath: string;
+  language: string;
+  issues: string[];
+  optimizations: string[];
+  content: string;
+}
