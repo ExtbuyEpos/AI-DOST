@@ -1,0 +1,137 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#010409">
+    <title>GERVIS AI | OMNISCIENT_X</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #010409;
+            --accent-color: #22d3ee;
+            --text-color: #22d3ee;
+            --glass-bg: rgba(15, 23, 42, 0.75);
+            --border-color: rgba(34, 211, 238, 0.15);
+            --grid-opacity: 0.03;
+            --card-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+            --hud-accent: #22d3ee;
+        }
+
+        .light-theme {
+            --bg-color: #f1f5f9;
+            --accent-color: #0284c7;
+            --text-color: #0f172a;
+            --glass-bg: rgba(255, 255, 255, 0.8);
+            --border-color: rgba(148, 163, 184, 0.2);
+            --grid-opacity: 0.04;
+            --card-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.1);
+            --hud-accent: #0284c7;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'JetBrains+Mono', monospace;
+            overflow: hidden;
+            background-image: 
+                linear-gradient(var(--accent-color) var(--grid-opacity) 1px, transparent 1px),
+                linear-gradient(90deg, var(--accent-color) var(--grid-opacity) 1px, transparent 1px);
+            background-size: 50px 50px;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            transition: background-color 0.8s cubic-bezier(0.4, 0, 0.2, 1), color 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .orbitron { font-family: 'Orbitron', sans-serif; }
+        
+        @keyframes scan {
+            0% { transform: translateY(-100%); opacity: 0; }
+            50% { opacity: 0.3; }
+            100% { transform: translateY(100%); opacity: 0; }
+        }
+        .scan-line {
+            height: 150px;
+            background: linear-gradient(to bottom, transparent, var(--accent-color), transparent);
+            animation: scan 8s linear infinite;
+            position: absolute;
+            width: 100%;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.1;
+        }
+
+        @keyframes rotate-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-rotate-slow {
+            animation: rotate-slow 20s linear infinite;
+        }
+
+        ::-webkit-scrollbar {
+            display: none;
+        }
+
+        .hud-glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(28px);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--card-shadow);
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .light-theme .hud-glass {
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
+        }
+
+        .glow-text {
+            text-shadow: 0 0 10px rgba(34, 211, 238, 0.3);
+        }
+
+        .light-theme .glow-text {
+            text-shadow: none;
+            letter-spacing: -0.01em;
+        }
+
+        /* Premium Scroll */
+        .premium-scroll::-webkit-scrollbar {
+            display: block;
+            width: 3px;
+        }
+        .premium-scroll::-webkit-scrollbar-thumb {
+            background: var(--accent-color);
+            border-radius: 10px;
+            opacity: 0.2;
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
+            .hud-glass {
+                border-radius: 2rem !important;
+                padding: 1.5rem !important;
+            }
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.38.0"
+  }
+}
+</script>
+</head>
+<body>
+    <div id="root"></div>
+</body>
+</html>
