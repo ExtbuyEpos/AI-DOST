@@ -415,10 +415,18 @@ export const SocialMediaNode: React.FC<SocialMediaNodeProps> = ({
                               <div className="flex items-center gap-5">
                                  <div className={`w-14 h-14 rounded-[1.5rem] flex items-center justify-center transition-all ${acc.isConnected ? 'bg-cyan-500/10 border border-cyan-500/30 shadow-lg' : 'bg-slate-200 dark:bg-slate-800'}`}>
                                     <PlatformIcon platform={acc.platform} className="w-7 h-7" useColor={acc.isConnected} />
+                                    {/* Connection Dot next to Icon */}
+                                    <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-[#0b1219] transition-all duration-700 ${acc.isConnected ? 'bg-emerald-500 animate-pulse shadow-[0_0_10px_#10b981]' : 'bg-slate-400'}`}></div>
                                  </div>
                                  <div className="flex flex-col gap-1.5">
                                     <span className={`text-[14px] orbitron font-black tracking-tight flex items-center gap-2 ${acc.isConnected ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>
                                        {acc.platform}
+                                       {/* Explicit Status Badge */}
+                                       {acc.isConnected ? (
+                                         <span className="text-[7px] bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 px-1.5 py-0.5 rounded-md animate-pulse">SYNCED</span>
+                                       ) : (
+                                         <span className="text-[7px] bg-slate-500/10 border border-slate-500/20 text-slate-500 px-1.5 py-0.5 rounded-md">IDLE</span>
+                                       )}
                                     </span>
                                     <div className="flex items-center gap-2">
                                        <span className="text-[9px] font-mono text-cyan-600 font-bold uppercase truncate max-w-[100px]">{acc.isConnected ? acc.handle : 'OFFLINE'}</span>
@@ -529,7 +537,7 @@ export const SocialMediaNode: React.FC<SocialMediaNodeProps> = ({
                                  <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-900 rounded-full overflow-hidden">
                                     <div className="h-full bg-blue-500 w-[60%] shadow-[0_0_10px_#3b82f6]"></div>
                                  </div>
-                              </div>
+                           </div>
                            </div>
 
                            <div className="p-8 bg-cyan-600/5 rounded-[2.5rem] border border-cyan-500/10">
