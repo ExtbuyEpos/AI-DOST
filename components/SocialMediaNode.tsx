@@ -403,57 +403,67 @@ export const SocialMediaNode: React.FC<SocialMediaNodeProps> = ({
           <div className="w-80 md:w-[22rem] border-r border-slate-200 dark:border-white/5 flex flex-col bg-slate-50/50 dark:bg-black/20 z-20">
              <div className="p-10 flex flex-col gap-12 h-full overflow-y-auto premium-scroll">
                 <div className="space-y-8">
-                   <span className="text-[11px] orbitron font-black text-slate-400 dark:text-cyan-500 uppercase tracking-[0.4em] flex items-center gap-3 italic">
+                   <span className="text-[11px] orbitron font-black text-slate-400 dark:text-cyan-50 uppercase tracking-[0.4em] flex items-center gap-3 italic">
                       <div className="w-2.5 h-2.5 bg-cyan-500 rounded-sm rotate-45 shadow-[0_0_10px_#06b6d4]"></div>
-                      Linked_Nodes
+                      Node_Handshake
                    </span>
 
                    <div className="flex flex-col gap-6">
                       {accounts.map(acc => (
-                        <div key={acc.platform} className={`flex flex-col p-8 rounded-[3rem] border-2 transition-all duration-700 gap-8 shadow-sm ${acc.isConnected ? 'border-cyan-500/20 bg-white dark:bg-cyan-500/5' : 'border-slate-200 dark:border-white/5 opacity-30 grayscale'}`}>
+                        <div key={acc.platform} className={`flex flex-col p-8 rounded-[3rem] border-2 transition-all duration-700 gap-8 shadow-sm group ${acc.isConnected ? 'border-cyan-500/30 bg-white dark:bg-cyan-500/10' : 'border-slate-200 dark:border-white/5 opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`}>
                            <div className="flex items-center justify-between">
                               <div className="flex items-center gap-5">
-                                 <div className={`w-14 h-14 rounded-[1.5rem] flex items-center justify-center transition-all ${acc.isConnected ? 'bg-cyan-500/10 border border-cyan-500/30 shadow-lg' : 'bg-slate-200 dark:bg-slate-800'}`}>
+                                 <div className={`w-14 h-14 rounded-[1.5rem] flex items-center justify-center transition-all relative ${acc.isConnected ? 'bg-cyan-500/20 border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.3)]' : 'bg-slate-200 dark:bg-slate-800'}`}>
                                     <PlatformIcon platform={acc.platform} className="w-7 h-7" useColor={acc.isConnected} />
-                                    {/* Connection Dot next to Icon */}
-                                    <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-[#0b1219] transition-all duration-700 ${acc.isConnected ? 'bg-emerald-500 animate-pulse shadow-[0_0_10px_#10b981]' : 'bg-slate-400'}`}></div>
+                                    {/* Connection Ripple Effect */}
+                                    {acc.isConnected && <div className="absolute inset-0 rounded-[1.5rem] border border-cyan-400 animate-[ping_2s_infinite] opacity-30"></div>}
                                  </div>
                                  <div className="flex flex-col gap-1.5">
-                                    <span className={`text-[14px] orbitron font-black tracking-tight flex items-center gap-2 ${acc.isConnected ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>
-                                       {acc.platform}
+                                    <div className="flex items-center gap-3">
+                                       <span className={`text-[14px] orbitron font-black tracking-tight ${acc.isConnected ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>
+                                          {acc.platform}
+                                       </span>
                                        {/* Explicit Status Badge */}
-                                       {acc.isConnected ? (
-                                         <span className="text-[7px] bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 px-1.5 py-0.5 rounded-md animate-pulse">SYNCED</span>
-                                       ) : (
-                                         <span className="text-[7px] bg-slate-500/10 border border-slate-500/20 text-slate-500 px-1.5 py-0.5 rounded-md">IDLE</span>
-                                       )}
-                                    </span>
+                                       <div className={`px-2 py-0.5 rounded-md text-[7px] orbitron font-black border transition-all ${acc.isConnected ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-500 animate-pulse' : 'bg-slate-500/10 border-slate-500/40 text-slate-500'}`}>
+                                          {acc.isConnected ? 'SYNCED' : 'OFFLINE'}
+                                       </div>
+                                    </div>
                                     <div className="flex items-center gap-2">
-                                       <span className="text-[9px] font-mono text-cyan-600 font-bold uppercase truncate max-w-[100px]">{acc.isConnected ? acc.handle : 'OFFLINE'}</span>
-                                       {acc.autoEngageActive && (
-                                          <span className="px-1.5 py-0.5 bg-emerald-500/20 border border-emerald-500/40 text-[6px] orbitron font-black text-emerald-500 rounded animate-pulse">AUTO</span>
-                                       )}
+                                       <div className={`w-1.5 h-1.5 rounded-full ${acc.isConnected ? 'bg-emerald-500 shadow-[0_0_5px_#10b981]' : 'bg-slate-600'}`}></div>
+                                       <span className="text-[9px] font-mono text-cyan-600 font-bold uppercase truncate max-w-[100px]">{acc.isConnected ? acc.handle : 'Awaiting_Link'}</span>
                                     </div>
                                  </div>
                               </div>
-                              <div className={`w-3.5 h-3.5 rounded-full ${acc.isConnected ? 'bg-emerald-500 shadow-[0_0_15px_#10b981]' : 'bg-slate-400'}`}></div>
                            </div>
 
-                           {acc.isConnected && (
-                             <div className="flex items-center justify-between pt-6 border-t border-slate-100 dark:border-white/5">
-                                <div className="flex flex-col gap-1.5">
-                                   <span className="text-[9px] orbitron text-slate-400 font-black uppercase tracking-widest">AI_AUTO_COMMENT</span>
-                                   <span className={`text-[10px] orbitron font-black ${acc.autoEngageActive ? 'text-emerald-500 animate-pulse' : 'text-slate-500'}`}>
-                                      {acc.autoEngageActive ? 'ENABLED' : 'DISABLED'}
-                                   </span>
+                           {acc.isConnected ? (
+                             <div className="flex flex-col gap-6 pt-6 border-t border-slate-100 dark:border-white/5">
+                                <div className="flex items-center justify-between">
+                                   <div className="flex flex-col gap-1.5">
+                                      <span className="text-[9px] orbitron text-slate-400 font-black uppercase tracking-widest">AI_Engage</span>
+                                      <span className={`text-[10px] orbitron font-black ${acc.autoEngageActive ? 'text-emerald-500' : 'text-slate-500'}`}>
+                                         {acc.autoEngageActive ? 'ACTIVE' : 'READY'}
+                                      </span>
+                                   </div>
+                                   <button 
+                                     onClick={() => onToggleAutoEngage(acc.platform)}
+                                     className={`w-12 h-6 rounded-full relative transition-all duration-500 border-2 ${acc.autoEngageActive ? 'bg-emerald-500/20 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'bg-slate-200 dark:bg-slate-800 border-slate-300'}`}
+                                   >
+                                      <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-500 ${acc.autoEngageActive ? 'right-1 bg-emerald-500' : 'left-1 bg-slate-500'}`}></div>
+                                   </button>
                                 </div>
-                                <button 
-                                  onClick={() => onToggleAutoEngage(acc.platform)}
-                                  className={`w-14 h-7 rounded-full relative transition-all duration-500 border-2 ${acc.autoEngageActive ? 'bg-emerald-500/20 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'bg-slate-200 dark:bg-slate-800 border-slate-300'}`}
-                                >
-                                   <div className={`absolute top-1 w-4 h-4 rounded-full transition-all duration-500 ${acc.autoEngageActive ? 'right-1 bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'left-1 bg-slate-500'}`}></div>
-                                </button>
+                                <div className="flex justify-between items-center text-[10px] font-mono">
+                                   <span className="text-slate-400">FOLLOWERS</span>
+                                   <span className="text-slate-900 dark:text-white font-black">{acc.followers}</span>
+                                </div>
                              </div>
+                           ) : (
+                             <button 
+                               onClick={() => onConnect(acc.platform)}
+                               className="w-full py-4 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-500 orbitron font-black text-[9px] rounded-2xl hover:bg-cyan-600 hover:text-white transition-all uppercase tracking-widest"
+                             >
+                               Initialize_Protocol
+                             </button>
                            )}
                         </div>
                       ))}
@@ -461,8 +471,8 @@ export const SocialMediaNode: React.FC<SocialMediaNodeProps> = ({
                 </div>
 
                 <div className="mt-auto p-10 rounded-[3.5rem] bg-cyan-600/5 border border-cyan-500/20 flex flex-col gap-4">
-                   <span className="text-[11px] orbitron font-black text-cyan-600 uppercase tracking-widest italic">Dost_Guidance</span>
-                   <p className="text-[10px] font-mono text-slate-600 dark:text-cyan-200 italic leading-relaxed">"Enable AI Auto-Commenting to permit sub-agents to autonomously response to audience interactions with strategic precision."</p>
+                   <span className="text-[11px] orbitron font-black text-cyan-600 uppercase tracking-widest italic">Nexus_Note</span>
+                   <p className="text-[10px] font-mono text-slate-600 dark:text-cyan-200 italic leading-relaxed">"Synchronized nodes allow for cross-platform brand synthesis. Keep all channels active for peak engagement."</p>
                 </div>
              </div>
           </div>

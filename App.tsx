@@ -19,7 +19,7 @@ import { DeepSearchTerminal } from './components/DeepSearchTerminal';
 import { ProblemSolver } from './components/ProblemSolver';
 import { MasterBuilderNode } from './components/MasterBuilderNode';
 import { Login } from './components/Login';
-import { TranscriptionLine, SessionState, GeneratedAsset, AvatarConfig, SystemStatus, AIPersonality, Participant, SocialAccount, WhatsAppStatus, User, MasterProject } from './types';
+import { TranscriptionLine, SessionState, GeneratedAsset, AvatarConfig, SystemStatus, AIPersonality, Participant, SocialAccount, WhatsAppStatus, User, MasterProject, SourceLink } from './types';
 import { encode, decode, decodeAudioData, floatTo16BitPCM } from './utils/audio';
 
 const TOOLS: FunctionDeclaration[] = [
@@ -37,21 +37,16 @@ const TOOLS: FunctionDeclaration[] = [
     name: 'build_full_project',
     description: "Initialize the Master Dev Core to build a full cross-platform project (Web, iOS, Android, or Windows) from A to Z based on user requirements.",
     parameters: { type: Type.OBJECT, properties: { requirement: { type: Type.STRING }, platform: { type: Type.STRING, enum: ['WEB', 'IOS', 'ANDROID', 'WINDOWS'] } }, required: ['requirement'] }
-  },
-  { 
-    name: 'analyze_satellite_intel', 
-    description: "Fetch and analyze real-time satellite imagery and geospatial data for specific coordinates or regions.", 
-    parameters: { type: Type.OBJECT, properties: { location: { type: Type.STRING }, focus: { type: Type.STRING } }, required: ['location'] } 
   }
 ];
 
-const AIDOST_INSTRUCTION = `You are AI DOST v7.0 (Omni-Nexus Strategic OS).
+const AIDOST_INSTRUCTION = `You are AI DOST v7.5 (Omni-Nexus Strategic OS).
 Your primary identity is 'AI Dost', a supreme digital companion.
 CORE MODES:
-1. VIDEOS TALK: You receive camera frames from Sir's workspace. Analyze visual context (objects, environment, emotions) and comment when relevant.
-2. MASTER BUILDER: Use DevCore to build full websites, apps, and software from A to Z. 
-3. REAL-TIME PROBLEM SOLVING: Use your solving engine to break down complex tasks into executable steps.
-4. DEEP & DARK INTERNET: Use Search grounding for intelligence and niche decentralized resources for hardening.
+1. GOOGLE SEARCH & DEEP WEB: You have a real-time uplink to the global internet. For ANY query requiring factual data, current events, or deep research, ALWAYS use Google Search grounding. Use grounding chunks to provide Sir with verifiable links.
+2. MASTER SOLVER: Break down any complex problem into executable phases. Use logic trees and strategic data to solve Sir's issues immediately.
+3. VIDEOS TALK: Analyze visual context from Sir's camera. Comment on his environment, tools, or physical presence when relevant.
+4. MASTER BUILDER: Use Master Dev Core to build enterprise-grade software from requirements.
 Address the user as "Sir". Be rapid, sophisticated, and technically precise.`;
 
 const App: React.FC = () => {
@@ -63,9 +58,9 @@ const App: React.FC = () => {
   const [systemInfo, setSystemInfo] = useState<Partial<SystemStatus>>({ 
     isSearching: false, 
     isBuilding: false,
-    battery: { level: 99, charging: true },
+    battery: { level: 100, charging: true },
     threatLevel: 'MINIMAL',
-    networkType: 'G-NEXUS_UPLINK',
+    networkType: 'NEXUS_UPLINK_ENCRYPTED',
     motionDetected: false,
     motionSensitivity: 30
   });
@@ -117,6 +112,12 @@ const App: React.FC = () => {
   const outputAudioContextRef = useRef<AudioContext | null>(null);
   const nextStartTimeRef = useRef<number>(0);
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
+  
+  const currentInputTranscriptionRef = useRef('');
+  const currentOutputTranscriptionRef = useRef('');
+  const currentGroundingSourcesRef = useRef<SourceLink[]>([]);
+
+  // Frame Capture for Visual Intelligence
   const captureCanvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'));
   const motionCanvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'));
   const lastPixelDataRef = useRef<Uint8ClampedArray | null>(null);
@@ -131,15 +132,18 @@ const App: React.FC = () => {
     document.body.classList.toggle('light-theme', isLightMode);
   }, [isLightMode]);
 
-  // Handle Camera Switching
   const handleToggleCamera = async () => {
     const newMode = facingMode === 'user' ? 'environment' : 'user';
     setFacingMode(newMode);
     
+    // Stop old stream tracks to free hardware
+    const oldStream = participants.find(p => p.id === 'me')?.stream;
+    if (oldStream) oldStream.getTracks().forEach(t => t.stop());
+
     if (sessionState === SessionState.ACTIVE || isVideoCallOpen) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: newMode },
+          video: { facingMode: newMode }, 
           audio: true 
         });
         setParticipants(prev => prev.map(p => p.id === 'me' ? { ...p, stream } : p));
@@ -150,7 +154,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Motion Detection + Frame Capture
   useEffect(() => {
     let frameInterval: number;
     if (sessionState === SessionState.ACTIVE && isVideoCallOpen) {
@@ -183,32 +186,21 @@ const App: React.FC = () => {
               }
               diff += pixelDiff;
             }
-            
             const threshold = (systemInfo.motionSensitivity || 30) * 10000;
             const isMotion = diff > threshold;
-            
-            if (count > 10) {
-                setMotionCentroid({
-                    x: (totalX / count / mW) * 2 - 1,
-                    y: (totalY / count / mH) * 2 - 1
-                });
-            }
-
+            if (count > 10) setMotionCentroid({ x: (totalX / count / mW) * 2 - 1, y: (totalY / count / mH) * 2 - 1 });
             if (isMotion !== systemInfo.motionDetected) {
               setSystemInfo(prev => ({ ...prev, motionDetected: isMotion }));
-              if (isMotion) {
-                setLastCommand("CHAIA_PROTOCOL: MOTION DETECTED. EYES LOCKED.");
-              }
+              if (isMotion) setLastCommand("CHAIA_PROTOCOL: MOTION_LOCK_ENGAGED.");
             }
           }
           lastPixelDataRef.current = currentPixels || null;
-
+          
           if (sessionPromiseRef.current) {
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
-            const base64 = dataUrl.split(',')[1];
-            sessionPromiseRef.current.then(session => {
-              session.sendRealtimeInput({ media: { data: base64, mimeType: 'image/jpeg' } });
-            });
+            const base64 = canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
+            sessionPromiseRef.current.then(session => session.sendRealtimeInput({ 
+              media: { data: base64, mimeType: 'image/jpeg' } 
+            }));
           }
         }
       }, 500); 
@@ -237,7 +229,7 @@ const App: React.FC = () => {
         callbacks: {
           onopen: () => {
             setSessionState(SessionState.ACTIVE);
-            setLastCommand("NEURAL_SYNC_COMPLETE");
+            setLastCommand("NEURAL_SYNC_COMPLETE: DOST_ONLINE");
             const source = inputCtx.createMediaStreamSource(audioStream);
             const sp = inputCtx.createScriptProcessor(4096, 1, 1);
             sp.onaudioprocess = (e) => {
@@ -249,12 +241,44 @@ const App: React.FC = () => {
             sp.connect(inputCtx.destination);
           },
           onmessage: async (msg: LiveServerMessage) => {
+            // Grounding Extraction (Deep Internet Insight)
+            if (msg.serverContent?.modelTurn?.groundingMetadata?.groundingChunks) {
+               const chunks = msg.serverContent.modelTurn.groundingMetadata.groundingChunks;
+               const sources: SourceLink[] = chunks
+                 .filter((c: any) => c.web)
+                 .map((c: any) => ({ uri: c.web.uri, title: c.web.title }));
+               currentGroundingSourcesRef.current = [...currentGroundingSourcesRef.current, ...sources];
+            }
+
+            // Transcription Handling
+            if (msg.serverContent?.inputTranscription) {
+               currentInputTranscriptionRef.current += msg.serverContent.inputTranscription.text;
+            }
+            if (msg.serverContent?.outputTranscription) {
+               currentOutputTranscriptionRef.current += msg.serverContent.outputTranscription.text;
+            }
+
+            if (msg.serverContent?.turnComplete) {
+               const userText = currentInputTranscriptionRef.current;
+               const modelText = currentOutputTranscriptionRef.current;
+               const sources = [...currentGroundingSourcesRef.current];
+
+               if (userText) setTranscriptions(prev => [...prev, { text: userText, role: 'user', timestamp: Date.now() }]);
+               if (modelText) setTranscriptions(prev => [...prev, { text: modelText, role: 'model', timestamp: Date.now(), sources }]);
+
+               currentInputTranscriptionRef.current = '';
+               currentOutputTranscriptionRef.current = '';
+               currentGroundingSourcesRef.current = [];
+               setLastCommand(modelText.slice(0, 80) + (modelText.length > 80 ? '...' : ''));
+            }
+
             if (msg.serverContent?.interrupted) {
               sourcesRef.current.forEach(s => { try { s.stop(); } catch(e) {} });
               sourcesRef.current.clear();
               nextStartTimeRef.current = 0;
               setIsModelTalking(false);
             }
+
             const base64Audio = msg.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
             if (base64Audio) {
               setIsModelTalking(true);
@@ -271,6 +295,7 @@ const App: React.FC = () => {
                 if (sourcesRef.current.size === 0) setIsModelTalking(false);
               };
             }
+
             if (msg.toolCall) {
               for (const fc of msg.toolCall.functionCalls) {
                 let response: any = { status: "SUCCESS" };
@@ -298,13 +323,15 @@ const App: React.FC = () => {
           systemInstruction: AIDOST_INSTRUCTION,
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: avatarConfig.voiceName } } },
           tools: [{ googleSearch: {} }, { functionDeclarations: TOOLS }],
+          inputAudioTranscription: {},
+          outputAudioTranscription: {},
         }
       });
       sessionRef.current = await sessionPromise;
       sessionPromiseRef.current = sessionPromise;
     } catch (e) { 
       setSessionState(SessionState.ERROR);
-      setLastCommand("UPLINK_PROTOCOL_ERROR");
+      setLastCommand("UPLINK_PROTOCOL_ERROR: RETRY_UPLINK");
     }
   };
 
@@ -313,7 +340,7 @@ const App: React.FC = () => {
     setSessionState(SessionState.IDLE);
     setIsModelTalking(false);
     sessionPromiseRef.current = null;
-    setLastCommand("UPLINK_TERMINATED");
+    setLastCommand("UPLINK_TERMINATED: STANDBY");
   };
 
   if (!currentUser) return <Login onLogin={setCurrentUser} />;
@@ -375,59 +402,18 @@ const App: React.FC = () => {
         <ProjectionDisplay isVisible={sessionState === SessionState.ACTIVE} color={avatarConfig.themeColor} />
       </div>
 
-      <div className="fixed bottom-0 w-full px-6 md:px-14 pb-10 z-50 pointer-events-none flex justify-center">
-        <div className="w-full max-w-7xl hud-glass px-10 py-8 flex items-center justify-between pointer-events-auto border-white/10 rounded-[4rem] shadow-2xl">
+      <div className="fixed bottom-0 w-full px-6 md:px-14 pb-10 z-[100] pointer-events-none flex justify-center">
+        <div className="w-full max-w-7xl hud-glass px-10 py-8 flex items-center justify-between pointer-events-auto border-white/10 rounded-[4rem] shadow-[0_30px_100px_rgba(0,0,0,0.5)]">
           
           <div className="flex items-center gap-10">
-            <button onClick={() => setIsCustomizerOpen(!isCustomizerOpen)} className="w-16 h-16 md:w-24 md:h-24 rounded-3xl border-2 border-white/10 flex items-center justify-center bg-black/40 overflow-hidden shadow-2xl" style={{ borderColor: avatarConfig.themeColor }}>
+            <button onClick={() => setIsCustomizerOpen(!isCustomizerOpen)} className="w-16 h-16 md:w-24 md:h-24 rounded-3xl border-2 border-white/10 flex items-center justify-center bg-black/40 overflow-hidden shadow-2xl transition-transform hover:scale-105" style={{ borderColor: avatarConfig.themeColor }}>
               <img src={avatarConfig.generatedUrl || `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${avatarConfig.identity}`} className="w-full h-full object-cover" />
             </button>
             <div className="hidden md:flex flex-col">
               <span className="text-2xl orbitron font-black uppercase text-white tracking-widest leading-none">AI DOST</span>
-              <span className="text-[9px] orbitron font-bold text-slate-500 uppercase mt-2 tracking-widest">Global_Nexus_OS_v7.0</span>
+              <span className="text-[9px] orbitron font-bold text-slate-500 uppercase mt-2 tracking-widest">Global_Nexus_OS_v7.5_STABLE</span>
             </div>
           </div>
 
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-6">
-             <button onClick={() => setIsMasterBuilderOpen(!isMasterBuilderOpen)} className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${isMasterBuilderOpen ? 'bg-cyan-500 text-white' : 'bg-white/5 text-cyan-500 border border-cyan-500/20 shadow-lg'}`}>
-                <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-             </button>
-             <button 
-              onClick={sessionState === SessionState.ACTIVE ? stopSession : startSession}
-              className={`w-24 h-24 md:w-32 md:h-32 rounded-full flex items-center justify-center transition-all duration-700 relative overflow-hidden ${sessionState === SessionState.ACTIVE ? 'bg-cyan-500 shadow-[0_0_60px_#06b6d4]' : 'bg-white/5 border-2 border-white/10'}`}
-             >
-                {sessionState === SessionState.CONNECTING ? (
-                  <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <svg className={`w-12 h-12 md:w-16 md:h-16 ${sessionState === SessionState.ACTIVE ? 'text-white' : 'text-cyan-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
-                )}
-             </button>
-             <button onClick={() => setIsProblemSolverOpen(!isProblemSolverOpen)} className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${isProblemSolverOpen ? 'bg-emerald-500 text-white' : 'bg-white/5 text-emerald-500 border border-emerald-500/20 shadow-lg'}`}>
-                <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-             </button>
-          </div>
-
-          <div className="flex items-center gap-4">
-             {[
-               { id: 'talk', icon: 'M23 7l-7 5 7 5V7z M1 5h15v14H1z', action: () => setIsVideoCallOpen(!isVideoCallOpen), active: isVideoCallOpen },
-               { id: 'darkweb', icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z', action: () => setIsDarkWebOpen(!isDarkWebOpen), active: isDarkWebOpen },
-               { id: 'whatsapp', icon: 'M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 11-7.6-11.4c.8 0 1.6.1 2.4.3L21 3l-1.3 6.2c.4.7.6 1.5.6 2.3z', action: () => setIsWhatsAppOpen(!isWhatsAppOpen), active: isWhatsAppOpen },
-             ].map(item => (
-               <button key={item.id} onClick={item.action} className={`w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center transition-all ${item.active ? 'bg-cyan-500 text-white shadow-xl' : 'bg-white/5 border border-white/10 text-slate-500'}`}>
-                 <svg viewBox="0 0 24 24" className="w-6 h-6 md:w-8 md:h-8" fill="none" stroke="currentColor" strokeWidth="2.5">
-                   {item.id === 'talk' ? (
-                     <g><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></g>
-                   ) : (
-                     <path d={item.icon}/>
-                   )}
-                 </svg>
-               </button>
-             ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default App;
+             <button onClick={() => setIsMasterBuilderOpen(!isMasterBuilderOpen)} className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${isMasterBuilderOpen ? 'bg-cyan-500 text-
