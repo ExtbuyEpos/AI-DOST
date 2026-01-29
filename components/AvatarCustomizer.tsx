@@ -1,4 +1,3 @@
-
 import React, { useRef } from 'react';
 import { AvatarConfig } from '../types';
 
@@ -26,37 +25,40 @@ export const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({
   };
 
   const options = {
-    hairstyle: ['Cyber-Fade', 'Neon-Locs', 'Sleek-Synthetic', 'Spiky-Energy', 'Classic-Combed'],
-    faceType: ['Android-Prime', 'Hyper-Humanoid', 'Abstract-Data', 'Cyborg-Elite', 'Crystal-Core'],
-    accessory: ['Neural-Link', 'Tactical-Visor', 'Aura-Crown', 'None', 'Data-Halo'],
+    hairstyle: ['Synthetic-Sleek', 'Cyber-Quiff', 'Neon-Locs', 'Symmetry-Cut', 'Digital-Fade', 'Neural-Braids', 'Kinetic-Flow'],
+    faceType: ['Hyper-Humanoid', 'Android-Prime', 'Abstract-Data', 'Elite-V5', 'Crystal-Core', 'Titan-Mesh'],
+    accessory: ['Tactical-Visor', 'Neural-Link', 'Aura-Halo', 'None', 'Data-Lenses', 'Molt-Interface'],
     voices: [
       { name: 'Charon', gender: 'MALE', tone: 'Sophisticated' },
-      { name: 'Fenrir', gender: 'MALE', tone: 'Authoritative' },
-      { name: 'Puck', gender: 'NEUTRAL', tone: 'Swift' },
+      { name: 'Fenrir', gender: 'MALE', tone: 'Deep' },
+      { name: 'Puck', gender: 'NEUTRAL', tone: 'Playful' },
       { name: 'Zephyr', gender: 'FEMALE', tone: 'Tactical' },
-      { name: 'Kore', gender: 'FEMALE', tone: 'Clear' }
+      { name: 'Kore', gender: 'FEMALE', tone: 'Soft' }
     ]
   };
 
   return (
-    <div className="fixed left-6 md:left-12 top-28 bottom-28 w-80 md:w-96 z-[60] flex flex-col gap-6 animate-in slide-in-from-left-10 duration-700 pointer-events-auto hud-glass rounded-[2.5rem] p-8 overflow-y-auto premium-scroll border-slate-200/50 dark:border-cyan-500/30 shadow-[0_30px_60px_-12px_rgba(0,0,0,0.15)]">
-      <div className="text-[14px] orbitron text-slate-800 dark:text-cyan-400 font-black tracking-[0.3em] border-b-2 border-slate-100 dark:border-cyan-500/20 pb-5 mb-2 flex justify-between items-center uppercase italic">
-        Identity_Editor
-        <div className={`w-3 h-3 bg-sky-500 dark:bg-cyan-500 rounded-full ${isGenerating ? 'animate-ping' : ''}`}></div>
+    <div className="fixed left-8 md:left-14 top-32 bottom-32 w-80 md:w-[24rem] z-[60] flex flex-col gap-8 animate-in slide-in-from-left-12 duration-700 pointer-events-auto hud-glass rounded-[3rem] p-10 overflow-y-auto premium-scroll shadow-2xl">
+      <div className="text-[16px] orbitron text-slate-900 dark:text-cyan-400 font-black tracking-[0.4em] border-b border-slate-200 dark:border-cyan-500/20 pb-6 mb-2 flex justify-between items-center uppercase italic">
+        Identity_Synth
+        <div className={`w-3.5 h-3.5 bg-cyan-500 rounded-full ${isGenerating ? 'animate-ping' : ''}`}></div>
       </div>
 
-      <div className="flex flex-col gap-8">
-        {/* FACE UPLOAD */}
-        <section className="space-y-4">
-           <label className="text-[9px] orbitron text-slate-400 dark:text-cyan-600 font-black uppercase block tracking-widest">Neural_Face_Uplink</label>
+      <div className="flex flex-col gap-10">
+        {/* FACE UPLINK */}
+        <section className="space-y-5">
+           <label className="text-[10px] orbitron text-slate-500 font-black uppercase block tracking-widest">Neural_Face_Mapping</label>
            <div 
              onClick={() => fileInputRef.current?.click()}
-             className={`w-full aspect-square rounded-[2rem] border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all relative overflow-hidden group ${config.userFaceImage ? 'border-cyan-500 bg-cyan-500/5' : 'border-slate-200 dark:border-white/10 hover:border-cyan-500/50'}`}
+             className={`w-full aspect-square rounded-[2.5rem] border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all relative overflow-hidden group ${config.userFaceImage ? 'border-cyan-500 bg-cyan-500/5' : 'border-slate-200 dark:border-white/10 hover:border-cyan-500/40'}`}
            >
              {config.userFaceImage ? (
-               <img src={config.userFaceImage} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt="Face Source" />
+               <img src={config.userFaceImage} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" alt="Face Map" />
              ) : (
-               <span className="text-[9px] orbitron font-black text-slate-500 dark:text-cyan-400 uppercase tracking-widest text-center">Upload_Tactical_Likeness</span>
+               <div className="text-center p-8 space-y-4">
+                 <svg viewBox="0 0 24 24" className="w-10 h-10 mx-auto text-slate-400 group-hover:text-cyan-500 transition-colors" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                 <span className="text-[9px] orbitron font-black text-slate-500 group-hover:text-cyan-400 uppercase tracking-widest block">Upload_Likeness_Vector</span>
+               </div>
              )}
              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => {
                const file = e.target.files?.[0];
@@ -69,14 +71,14 @@ export const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({
            </div>
         </section>
 
-        {/* GRANULAR CONTROLS */}
+        {/* GRANULAR MORPHOLOGY */}
         <section className="space-y-6">
-           <label className="text-[9px] orbitron text-slate-400 dark:text-cyan-600 font-black uppercase block tracking-widest">Granular_Morphology</label>
+           <label className="text-[10px] orbitron text-slate-500 font-black uppercase block tracking-widest">Granular_Morphology</label>
            {[
-             { id: 'noseSize', label: 'Nose_Scale' },
+             { id: 'noseSize', label: 'Nasal_Scale' },
              { id: 'eyeWidth', label: 'Optic_Span' },
              { id: 'jawLine', label: 'Mandible_V01' },
-             { id: 'glowIntensity', label: 'Aura_Lumen' }
+             { id: 'glowIntensity', label: 'Aura_Intensity' }
            ].map(ctrl => (
              <div key={ctrl.id} className="space-y-2">
                 <div className="flex justify-between text-[8px] orbitron font-bold text-slate-500">
@@ -88,44 +90,46 @@ export const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({
                   min="0" max="100" 
                   value={(config.granular as any)?.[ctrl.id] || 50} 
                   onChange={(e) => handleGranularUpdate(ctrl.id, parseInt(e.target.value))}
-                  className="w-full accent-cyan-500 h-1 bg-white/5 rounded-full appearance-none cursor-pointer"
+                  className="w-full accent-cyan-500 h-1.5 bg-slate-200 dark:bg-white/10 rounded-full appearance-none cursor-pointer"
                 />
              </div>
            ))}
         </section>
 
-        {/* THEME COLOR PICKER */}
+        {/* SPECTRAL CHROMA */}
         <section className="space-y-4">
            <div className="flex justify-between items-center">
-              <label className="text-[9px] orbitron text-slate-400 dark:text-cyan-600 font-black uppercase block tracking-widest">Chroma_Spectral_Map</label>
-              <input 
-                type="color" 
-                value={config.themeColor} 
-                onChange={(e) => onUpdate({ themeColor: e.target.value })} 
-                className="w-8 h-8 rounded-lg bg-transparent border-0 cursor-pointer overflow-hidden" 
-              />
+              <label className="text-[10px] orbitron text-slate-500 font-black uppercase block tracking-widest">Spectral_Chroma</label>
+              <div className="flex items-center gap-4">
+                 <span className="text-[11px] font-mono text-slate-500 uppercase">{config.themeColor}</span>
+                 <input 
+                    type="color" 
+                    value={config.themeColor} 
+                    onChange={(e) => onUpdate({ themeColor: e.target.value })} 
+                    className="w-12 h-12 rounded-xl bg-transparent border-none cursor-pointer overflow-hidden p-0 shadow-lg" 
+                 />
+              </div>
            </div>
         </section>
 
-        {/* VOICE SYNTHESIZER */}
-        <section className="space-y-4">
-          <label className="text-[9px] orbitron text-slate-400 dark:text-cyan-600 font-black uppercase block tracking-widest">Vocal_Synthesizer</label>
-          <div className="grid grid-cols-2 gap-3">
-            {options.voices.map(v => (
-              <button 
-                key={v.name}
-                onClick={() => onUpdate({ voiceName: v.name })}
-                className={`py-3 px-4 border-2 rounded-2xl transition-all text-left relative overflow-hidden ${config.voiceName === v.name ? 'bg-sky-500 dark:bg-cyan-500/20 border-sky-500 dark:border-cyan-400' : 'bg-white dark:bg-slate-900/50 border-slate-100 dark:border-white/5'}`}
-              >
-                <span className="text-[10px] orbitron font-black block">{v.name.toUpperCase()}</span>
-                <span className="text-[7px] orbitron font-bold opacity-40">{v.gender}_{v.tone}</span>
-              </button>
-            ))}
+        {/* IDENTITY PRESETS */}
+        <section className="space-y-5">
+          <label className="text-[10px] orbitron text-slate-500 font-black uppercase block tracking-widest">Identity_Matrix</label>
+          <div className="grid grid-cols-2 gap-4">
+             {options.hairstyle.map(hair => (
+               <button 
+                key={hair}
+                onClick={() => onUpdate({ hairstyle: hair })}
+                className={`py-3 px-4 border rounded-2xl text-[9px] orbitron font-black uppercase transition-all ${config.hairstyle === hair ? 'bg-cyan-500 text-white border-cyan-400' : 'bg-white/5 border-slate-200 dark:border-white/5 text-slate-500 hover:border-cyan-500/40'}`}
+               >
+                 {hair}
+               </button>
+             ))}
           </div>
         </section>
 
-        <button onClick={onGenerate} className="w-full py-5 bg-slate-900 dark:bg-cyan-500 text-white dark:text-black orbitron font-black text-[13px] rounded-[1.5rem] hover:scale-105 transition-all shadow-xl relative overflow-hidden group">
-          {isGenerating ? 'Synthesizing...' : 'FINALIZE_DOST_SYNTH'}
+        <button onClick={onGenerate} className="w-full py-6 bg-slate-900 dark:bg-cyan-500 text-white dark:text-black orbitron font-black text-xs rounded-3xl hover:scale-[1.03] transition-all shadow-2xl uppercase tracking-[0.3em]">
+          {isGenerating ? 'Synthesizing_Core...' : 'EXECUTE_MASTER_SYNTH'}
         </button>
       </div>
     </div>

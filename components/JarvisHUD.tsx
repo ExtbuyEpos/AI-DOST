@@ -6,108 +6,113 @@ interface JarvisHUDProps {
   systemInfo?: Partial<SystemStatus>;
   isModelTalking?: boolean;
   identity?: AIPersonality;
+  isLightMode: boolean;
+  onToggleLightMode: () => void;
+  onToggleVR: () => void;
 }
 
 export const JarvisHUD: React.FC<JarvisHUDProps> = ({ 
   lastCommand, 
   systemInfo, 
   isModelTalking,
-  identity = 'GERVIS'
+  identity = 'MOLTBOT',
+  isLightMode,
+  onToggleLightMode,
+  onToggleVR
 }) => {
   const [telemetry, setTelemetry] = useState({
-    sync: 99.85,
-    ping: 11,
-    load: 12,
-    bits: '0.00',
-    vector: '0x00'
+    sync: 99.982,
+    ping: 7,
+    cpu: 12,
+    mem: 3.4
   });
 
-  const themeColor = identity === 'GERVIS' ? '#06b6d4' : identity === 'FRIDAY' ? '#f97316' : '#8b5cf6';
+  const themeColor = isLightMode ? '#0891b2' : '#06b6d4';
 
   useEffect(() => {
     const interval = setInterval(() => {
       setTelemetry({
-        sync: 99.8 + Math.random() * 0.15,
-        ping: Math.floor(Math.random() * 12) + 7,
-        load: Math.floor(Math.random() * 25) + 8,
-        bits: (Math.random() * 100).toFixed(2),
-        vector: '0x' + Math.floor(Math.random() * 16777215).toString(16).toUpperCase().padStart(6, '0')
+        sync: 99.9 + Math.random() * 0.09,
+        ping: Math.floor(Math.random() * 6) + 3,
+        cpu: Math.floor(Math.random() * 10) + 5,
+        mem: 3.4 + Math.random() * 0.2
       });
-    }, 2500);
+    }, 4000);
     return () => clearInterval(interval);
   }, []);
 
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none">
-      {/* GLOBAL TACTICAL OVERLAYS */}
-      <div className="absolute top-0 left-0 w-full h-48 bg-gradient-to-b from-black/90 to-transparent"></div>
-      <div className="absolute inset-0 border-[20px] md:border-[40px] border-black/10 pointer-events-none"></div>
+      {/* PROFESSIONAL OVERLAYS */}
+      <div className={`absolute top-0 left-0 w-full h-40 ${isLightMode ? 'bg-gradient-to-b from-white/70' : 'bg-gradient-to-b from-black/90'} to-transparent`}></div>
       
-      {/* TOP LEFT: NEURAL LINK TELEMETRY */}
-      <div className="absolute top-12 md:top-16 left-8 md:left-16 flex items-center gap-10 md:gap-14">
-        <div className="relative w-16 h-16 md:w-28 md:h-28 flex items-center justify-center">
-           <div className="absolute inset-0 border border-white/10 rounded-full"></div>
+      {/* TOP COMMAND CLUSTER */}
+      <div className="absolute top-10 md:top-14 left-10 md:left-14 flex items-center gap-8 md:gap-12 pointer-events-auto">
+        <div className="relative w-16 h-16 md:w-24 md:h-24 flex items-center justify-center">
+           <div className={`absolute inset-0 border-2 rounded-full ${isLightMode ? 'border-slate-900/10' : 'border-white/10'}`}></div>
            <div 
             className="absolute inset-0 border-t-4 border-r-2 rounded-full animate-[spin_5s_linear_infinite]" 
             style={{ borderColor: themeColor }}
            ></div>
-           <div 
-            className="absolute inset-3 border-b-2 border-l-4 rounded-full animate-[spin_8s_linear_infinite_reverse]" 
-            style={{ borderColor: `${themeColor}66` }}
-           ></div>
-           <div className="text-[10px] md:text-[14px] orbitron font-black text-glow" style={{ color: themeColor }}>{telemetry.ping}ms</div>
+           <div className={`text-[10px] md:text-[14px] orbitron font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{telemetry.ping}ms</div>
         </div>
         <div className="flex flex-col gap-2">
-          <span className="text-[9px] md:text-[11px] orbitron font-black text-slate-500 tracking-[0.5em] uppercase">NEURAL_SYNC_ESTABLISHED</span>
+          <span className="text-[9px] md:text-[12px] orbitron font-black text-slate-500 tracking-[0.5em] uppercase">MOLTBOT_AI_DOST_CORE</span>
           <div className="flex items-center gap-4">
-            <div className={`w-2.5 h-2.5 rounded-full animate-pulse shadow-[0_0_10px_currentColor]`} style={{ backgroundColor: themeColor, color: themeColor }}></div>
-            <span className="text-sm md:text-lg font-mono font-black" style={{ color: themeColor }}>{telemetry.sync.toFixed(3)}%_STABLE</span>
+            <div className={`w-2.5 h-2.5 rounded-full animate-pulse shadow-[0_0_15px_currentColor]`} style={{ backgroundColor: themeColor, color: themeColor }}></div>
+            <span className={`text-sm md:text-lg font-mono font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{telemetry.sync.toFixed(3)}%_DOST_UPLINK</span>
           </div>
         </div>
       </div>
 
-      {/* TOP RIGHT: MISSION PARAMETERS */}
-      <div className="absolute top-12 md:top-16 right-8 md:right-16 text-right flex flex-col gap-8">
-        <div className="flex flex-col items-end">
-          <span className="text-[9px] md:text-[11px] orbitron font-black text-slate-500 tracking-[0.5em] uppercase">SYSTEM_ARCH_IDENT</span>
-          <span className="text-sm md:text-lg font-mono font-black text-glow" style={{ color: themeColor }}>PROJ_DOST_4.2.1_FINAL</span>
+      {/* TOP RIGHT: SYSTEM TOGGLES */}
+      <div className="absolute top-10 md:top-14 right-10 md:right-14 flex items-center gap-6 pointer-events-auto">
+        <div className="hidden lg:flex items-center gap-10 mr-10 px-8 py-3 bg-white/5 dark:bg-black/40 rounded-2xl border border-white/5 backdrop-blur-md">
+           <div className="flex flex-col">
+              <span className="text-[8px] orbitron text-slate-500 uppercase tracking-widest">CPU_LOAD</span>
+              <span className={`text-xs font-mono font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{telemetry.cpu}%</span>
+           </div>
+           <div className="flex flex-col">
+              <span className="text-[8px] orbitron text-slate-500 uppercase tracking-widest">MEM_POOL</span>
+              <span className={`text-xs font-mono font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{telemetry.mem.toFixed(1)}GB</span>
+           </div>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <div className="flex justify-between w-40 md:w-64 text-[8px] md:text-[11px] orbitron font-black text-slate-500 uppercase tracking-widest">
-             <span>COGNITIVE_LOAD</span>
-             <span style={{ color: themeColor }}>{telemetry.load}%</span>
-          </div>
-          <div className="w-40 md:w-64 h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/10 shadow-inner">
-            <div 
-              className="h-full transition-all duration-1000 shadow-[0_0_15px_rgba(6,182,212,0.6)]" 
-              style={{ width: `${telemetry.load}%`, backgroundColor: themeColor }}
-            ></div>
-          </div>
-        </div>
+        
+        <button 
+          onClick={onToggleVR}
+          className={`px-6 py-3 rounded-xl border orbitron text-[10px] font-black tracking-[0.2em] transition-all shadow-xl ${isLightMode ? 'border-slate-900/10 bg-slate-100 text-slate-600' : 'border-white/10 bg-white/5 text-slate-400'} hover:border-cyan-500/50 hover:text-cyan-500`}
+        >
+          VR_DOST
+        </button>
+        <button 
+          onClick={onToggleLightMode}
+          className={`w-12 h-12 rounded-xl border flex items-center justify-center transition-all shadow-xl ${isLightMode ? 'border-slate-900/10 bg-slate-100 text-slate-900' : 'border-white/10 bg-white/5 text-white'} hover:border-cyan-500/50`}
+        >
+          {isLightMode ? (
+            <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          ) : (
+            <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          )}
+        </button>
       </div>
 
-      {/* BOTTOM LOG: MISSION CONTROL FEED */}
-      <div className="absolute bottom-44 left-8 md:bottom-56 md:left-16 max-w-sm md:max-w-xl w-full">
-        <div className="hologram-card p-6 md:p-8 border-l-4 group" style={{ borderLeftColor: themeColor }}>
-           <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
-              <div className="text-[11px] md:text-[13px] orbitron font-black text-slate-400 uppercase tracking-widest flex items-center gap-3">
-                 <div className="w-3 h-3 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_12px_cyan]"></div>
-                 MISSION_CONTROL_TELEMETRY
+      {/* LOWER LOG: MISSION FEED */}
+      <div className="absolute bottom-48 md:bottom-56 left-10 md:left-14 max-w-md md:max-w-lg w-full">
+        <div className={`hud-glass p-8 md:p-10 border-l-[6px] transition-all duration-700 shadow-2xl rounded-r-3xl ${isLightMode ? 'bg-white/85 border-slate-900/20' : 'bg-black/50 border-white/10'}`} style={{ borderLeftColor: themeColor }}>
+           <div className="flex items-center justify-between mb-5 border-b border-slate-900/5 dark:border-white/5 pb-3">
+              <div className="text-[10px] md:text-[13px] orbitron font-black text-slate-500 uppercase tracking-[0.5em] flex items-center gap-3">
+                 DOST_MISSION_LOG
               </div>
-              <span className="text-[10px] font-mono text-cyan-800 tracking-tighter uppercase font-bold">{telemetry.vector}</span>
+              <span className="text-[10px] font-mono text-cyan-600/70 font-bold uppercase">SECURE_LAYER_L7</span>
            </div>
-           <div className="text-sm md:text-lg font-mono text-white/95 italic line-clamp-2 leading-relaxed tracking-tight group-hover:text-white transition-colors">
-             {lastCommand || "System online. Awaiting Sir's neural input injection..."}
-           </div>
-           <div className="mt-5 text-[8px] md:text-[10px] orbitron font-black text-slate-600 uppercase tracking-[0.6em] flex justify-between animate-pulse">
-              <span>PRIME_PROTOCOL: v4.2.1</span>
-              <span>_SECURE_LINK_100%</span>
+           <div className={`text-[13px] md:text-[15px] font-mono italic line-clamp-2 leading-relaxed tracking-tight ${isLightMode ? 'text-slate-700' : 'text-slate-200'}`}>
+             {lastCommand || "AI Dost Uplink Synchronized. Standing by for instructions, Sir."}
            </div>
         </div>
       </div>
 
-      {/* DIEGETIC GRID FLOOR */}
-      <div className="absolute inset-0 opacity-[0.05] pointer-events-none bg-[linear-gradient(rgba(6,182,212,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.2)_1px,transparent_1px)] bg-[size:50px_50px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_75%)]"></div>
+      {/* DIEGETIC PROFESSIONAL DATA MESH */}
+      <div className={`absolute inset-0 opacity-[0.04] pointer-events-none bg-[linear-gradient(rgba(6,182,212,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.1)_1px,transparent_1px)] bg-[size:80px_80px] ${isLightMode ? 'grayscale invert' : ''}`}></div>
     </div>
   );
 };

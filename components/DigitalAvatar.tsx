@@ -6,9 +6,10 @@ interface DigitalAvatarProps {
   isActive: boolean;
   isProcessing?: boolean;
   config: AvatarConfig;
+  isLightMode?: boolean;
 }
 
-export const DigitalAvatar: React.FC<DigitalAvatarProps> = ({ isModelTalking, isActive, isProcessing, config }) => {
+export const DigitalAvatar: React.FC<DigitalAvatarProps> = ({ isModelTalking, isActive, isProcessing, config, isLightMode }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -18,9 +19,9 @@ export const DigitalAvatar: React.FC<DigitalAvatarProps> = ({ isModelTalking, is
     if (!ctx) return;
 
     let animationFrameId: number;
-    let particles: { x: number; y: number; z: number; phase: number; speed: number; orbit: number }[] = [];
-    const particleCount = 1000;
-    const radius = 120;
+    let particles: { x: number; y: number; z: number; phase: number; speed: number; }[] = [];
+    const particleCount = isLightMode ? 600 : 1000;
+    const radius = 110;
 
     for (let i = 0; i < particleCount; i++) {
       const theta = Math.random() * 2 * Math.PI;
@@ -30,8 +31,7 @@ export const DigitalAvatar: React.FC<DigitalAvatarProps> = ({ isModelTalking, is
         y: radius * Math.sin(phi) * Math.sin(theta),
         z: radius * Math.cos(phi),
         phase: Math.random() * Math.PI * 2,
-        speed: 1.0 + Math.random() * 2.5,
-        orbit: Math.random() * 60
+        speed: 1.0 + Math.random() * 2
       });
     }
 
@@ -43,36 +43,23 @@ export const DigitalAvatar: React.FC<DigitalAvatarProps> = ({ isModelTalking, is
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
       
-      const baseRotation = isActive ? 0.025 : 0.01;
-      angleX += baseRotation;
-      angleY += baseRotation * 1.4;
+      const rotationSpeed = isActive ? (isProcessing ? 0.04 : 0.02) : 0.005;
+      angleX += rotationSpeed;
+      angleY += rotationSpeed * 1.2;
 
-      const talkingScale = isModelTalking 
-        ? 1.25 + Math.sin(Date.now() * 0.018) * 0.1 
-        : 1.0;
-      
-      const processingScale = isProcessing 
-        ? 1.15 + Math.cos(Date.now() * 0.035) * 0.06 
-        : 1.0;
+      const scale = (isModelTalking ? 1.2 : 1.0) * (isProcessing ? 1.05 : 1.0);
 
-      const finalScale = talkingScale * processingScale;
+      // Color Adaptation
+      const hex = config.themeColor;
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
 
-      // Hex to RGBA conversion
-      const r = parseInt(config.themeColor.slice(1, 3), 16);
-      const g = parseInt(config.themeColor.slice(3, 5), 16);
-      const b = parseInt(config.themeColor.slice(5, 7), 16);
-
-      // Render Orbital Rings Behind
+      // Render Orbital Rings
       if (isActive) {
         ctx.beginPath();
-        ctx.ellipse(centerX, centerY, radius * 2 * finalScale, radius * 0.6 * finalScale, angleX * 0.5, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.08)`;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.ellipse(centerX, centerY, radius * 1.8 * finalScale, radius * 0.4 * finalScale, -angleY * 0.3, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.05)`;
+        ctx.ellipse(centerX, centerY, radius * 1.8 * scale, radius * 0.5 * scale, angleX * 0.5, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${isLightMode ? 0.05 : 0.08})`;
         ctx.lineWidth = 1;
         ctx.stroke();
       }
@@ -83,15 +70,10 @@ export const DigitalAvatar: React.FC<DigitalAvatarProps> = ({ isModelTalking, is
         let z = p.z;
 
         if (isModelTalking) {
-          const displacement = Math.sin(Date.now() * 0.025 * p.speed + p.phase) * 20;
+          const displacement = Math.sin(Date.now() * 0.02 * p.speed + p.phase) * 15;
           x += (x / radius) * displacement;
           y += (y / radius) * displacement;
           z += (z / radius) * displacement;
-        }
-
-        if (isProcessing) {
-          const jitter = (Math.random() - 0.5) * 8;
-          x += jitter; y += jitter; z += jitter;
         }
 
         // Apply 3D rotation
@@ -103,85 +85,54 @@ export const DigitalAvatar: React.FC<DigitalAvatarProps> = ({ isModelTalking, is
         tz = y * Math.sin(angleX) + z * Math.cos(angleX);
         y = ty; z = tz;
 
-        const perspective = 500 / (500 - z);
-        const sx = centerX + x * perspective * finalScale;
-        const sy = centerY + y * perspective * finalScale;
+        const perspective = 400 / (400 - z);
+        const sx = centerX + x * perspective * scale;
+        const sy = centerY + y * perspective * scale;
 
-        const alpha = Math.max(0.08, (z + radius) / (2 * radius)) * (isActive ? 1.0 : 0.45);
-        
-        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha * (isModelTalking ? 1.0 : 0.7)})`;
+        const alpha = Math.max(0.05, (z + radius) / (2 * radius)) * (isActive ? 1.0 : 0.3);
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha * (isLightMode ? 0.8 : 0.7)})`;
 
         ctx.beginPath();
-        const pSize = (isModelTalking ? 3.0 : 2.0) * perspective;
+        const pSize = (isModelTalking ? 2.5 : 1.5) * perspective;
         ctx.arc(sx, sy, pSize, 0, Math.PI * 2);
         ctx.fill();
 
-        // High-density neural connections
         if (isActive && i % 40 === 0) {
-          ctx.beginPath();
-          ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alpha * 0.12})`;
-          ctx.lineWidth = 0.6;
-          ctx.moveTo(sx, sy);
-          ctx.lineTo(centerX, centerY);
-          ctx.stroke();
+           ctx.beginPath();
+           ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alpha * 0.1})`;
+           ctx.lineWidth = 0.5;
+           ctx.moveTo(sx, sy);
+           ctx.lineTo(centerX, centerY);
+           ctx.stroke();
         }
       });
-
-      // Render Foreground Orbital Overlay
-      if (isActive) {
-        ctx.beginPath();
-        ctx.ellipse(centerX, centerY, radius * 2.2 * finalScale, radius * 0.7 * finalScale, angleX + Math.PI/2, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.15)`;
-        ctx.lineWidth = 0.5;
-        ctx.setLineDash([10, 20]);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
 
       animationFrameId = requestAnimationFrame(render);
     };
 
     render();
     return () => cancelAnimationFrame(animationFrameId);
-  }, [isModelTalking, isActive, isProcessing, config.themeColor]);
+  }, [isModelTalking, isActive, isProcessing, config.themeColor, isLightMode]);
 
   return (
-    <div className="relative w-[500px] h-[500px] flex items-center justify-center group">
-      {/* GLOW ATMOSPHERE */}
+    <div className="relative w-[500px] h-[500px] flex items-center justify-center pointer-events-none">
       <div 
-        className={`absolute inset-0 rounded-full blur-[80px] transition-all duration-1000 ${isActive ? 'opacity-20 scale-125' : 'opacity-0 scale-100'}`}
+        className={`absolute inset-0 rounded-full blur-[100px] transition-all duration-1000 ${isActive ? (isLightMode ? 'opacity-10' : 'opacity-20') : 'opacity-0'}`}
         style={{ backgroundColor: config.themeColor }}
       ></div>
       
-      {/* SPINNING HUD GEOMETRY */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div 
-            className="absolute inset-0 border border-white/5 rounded-full animate-[spin_30s_linear_infinite]"
-            style={{ borderTop: `1px solid ${config.themeColor}22` }}
-        ></div>
-        <div 
-            className="absolute inset-20 border border-white/5 rounded-full animate-[spin_25s_linear_infinite_reverse]"
-            style={{ borderBottom: `2px solid ${config.themeColor}33` }}
-        ></div>
-        <div 
-            className="absolute inset-40 border border-white/5 rounded-full animate-[spin_15s_linear_infinite]"
-            style={{ borderLeft: `1px solid ${config.themeColor}44` }}
-        ></div>
-      </div>
-
       <div className="relative z-10">
-        <canvas ref={canvasRef} width={500} height={500} className="drop-shadow-[0_0_80px_rgba(6,182,212,0.4)] transition-transform duration-1000" />
+        <canvas ref={canvasRef} width={500} height={500} className={`drop-shadow-2xl transition-all duration-1000 ${isActive ? 'scale-110' : 'scale-90 opacity-40'}`} />
       </div>
 
-      {/* DIEGETIC STATUS RING */}
-      <div className="absolute bottom-[-60px] flex flex-col items-center">
+      <div className="absolute bottom-[-40px] flex flex-col items-center">
         <div 
-            className={`px-10 py-3 rounded-full border backdrop-blur-3xl transition-all duration-1000 flex items-center gap-4 ${isActive ? 'bg-cyan-500/10 border-cyan-500/50 shadow-[0_0_40px_rgba(6,182,212,0.3)]' : 'bg-white/5 border-white/10 opacity-30'}`}
-            style={isActive ? { borderColor: `${config.themeColor}80` } : {}}
+            className={`px-8 py-2.5 rounded-full border backdrop-blur-3xl transition-all duration-1000 flex items-center gap-3 ${isActive ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-slate-500/5 border-slate-500/10 opacity-30'}`}
+            style={isActive ? { borderColor: `${config.themeColor}50` } : {}}
         >
-          <div className={`w-2.5 h-2.5 rounded-full ${isActive ? 'animate-pulse' : ''}`} style={{ backgroundColor: config.themeColor }}></div>
-          <span className="text-[11px] orbitron font-black uppercase tracking-[0.6em] text-glow" style={isActive ? { color: config.themeColor } : { color: '#64748b' }}>
-             {isActive ? 'DOST_LINK_ESTABLISHED' : 'UPLINK_OFFLINE'}
+          <div className={`w-2 h-2 rounded-full ${isActive ? 'animate-pulse' : ''}`} style={{ backgroundColor: config.themeColor }}></div>
+          <span className={`text-[10px] orbitron font-black uppercase tracking-[0.4em] ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
+             {isActive ? 'OMNI_NEXUS_LINKED' : 'UPLINK_OFFLINE'}
           </span>
         </div>
       </div>

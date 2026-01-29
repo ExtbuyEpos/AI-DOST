@@ -17,7 +17,7 @@ export const LiveChat: React.FC<LiveChatProps> = ({ messages, isOpen, onSendMess
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, isOpen]);
+  }, [messages, isOpen, isProcessing]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,49 +30,45 @@ export const LiveChat: React.FC<LiveChatProps> = ({ messages, isOpen, onSendMess
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 md:inset-auto md:right-6 md:bottom-36 md:top-28 md:w-96 z-[60] flex flex-col gap-4 animate-in slide-in-from-right-10 duration-700 pointer-events-auto bg-black/90 md:bg-transparent p-4 md:p-0">
-      {/* Tactical Chat Header */}
-      <div className="hud-glass rounded-[1.5rem] md:rounded-[2rem] px-5 py-4 flex items-center justify-between border-slate-200/50 dark:border-cyan-500/20">
-        <div className="flex items-center gap-3">
-           <div className="w-2.5 h-2.5 bg-sky-500 dark:bg-cyan-400 animate-pulse rounded-full"></div>
-           <span className="text-[11px] orbitron text-slate-800 dark:text-cyan-400 font-black tracking-[0.2em]">GERVIS_COM_LINK</span>
+    <div className="fixed inset-0 md:inset-auto md:right-8 md:bottom-36 md:top-32 md:w-[28rem] z-[60] flex flex-col gap-6 animate-in slide-in-from-right-12 duration-700 pointer-events-auto bg-slate-50 dark:bg-black/95 md:bg-transparent p-6 md:p-0">
+      {/* PROFESSIONAL CHAT HEADER */}
+      <div className="hud-glass rounded-[2.5rem] px-8 py-5 flex items-center justify-between border-slate-200 dark:border-cyan-500/20">
+        <div className="flex items-center gap-4">
+           <div className="w-2.5 h-2.5 bg-cyan-500 animate-pulse rounded-full shadow-[0_0_10px_#06b6d4]"></div>
+           <span className="text-[13px] orbitron text-slate-900 dark:text-cyan-400 font-black tracking-[0.3em]">NEXUS_SYNC_L7</span>
         </div>
-        <button onClick={onClose} className="text-cyan-500">
+        <button onClick={onClose} className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center text-slate-400 hover:text-cyan-500 transition-all">
            <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
         </button>
       </div>
 
-      {/* Message Feed */}
-      <div className="flex-1 hud-glass rounded-[2rem] md:rounded-[2.5rem] flex flex-col overflow-hidden border-slate-200/50 dark:border-cyan-500/10">
+      <div className="flex-1 hud-glass rounded-[3rem] flex flex-col overflow-hidden border-slate-200 dark:border-cyan-500/10">
         <div 
           ref={scrollRef}
-          className="flex-1 overflow-y-auto premium-scroll flex flex-col gap-4 px-5 py-6"
+          className="flex-1 overflow-y-auto premium-scroll flex flex-col gap-6 px-8 py-8"
         >
           {messages.map((m, i) => (
-            <div key={i} className={`flex flex-col gap-1.5 ${m.role === 'user' ? 'items-end' : 'items-start animate-in fade-in slide-in-from-left-4 duration-500'}`}>
-              <div className="flex items-center gap-2 px-1">
-                <span className={`text-[8px] orbitron font-black tracking-[0.1em] ${m.role === 'user' ? 'text-slate-500 dark:text-cyan-700' : 'text-sky-600 dark:text-cyan-400'}`}>
-                  {m.role === 'user' ? 'SIR_AUTHORIZED' : 'GERVIS_X'}
+            <div key={i} className={`flex flex-col gap-2.5 ${m.role === 'user' ? 'items-end' : 'items-start animate-in fade-in slide-in-from-left-6'}`}>
+              <div className="flex items-center gap-3 px-1">
+                <span className={`text-[9px] orbitron font-black tracking-widest uppercase ${m.role === 'user' ? 'text-slate-400' : 'text-cyan-600'}`}>
+                  {m.role === 'user' ? 'SIR_UPLINK' : 'MOLTBOT_X'}
                 </span>
-                <span className="text-[7px] font-mono text-slate-400 opacity-60">
-                  {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <span className="text-[7px] font-mono text-slate-400 opacity-50">
+                  {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                 </span>
               </div>
-              <div className={`max-w-[90%] px-4 py-3 rounded-2xl text-[11px] font-mono leading-relaxed transition-all shadow-sm ${
+              <div className={`max-w-[95%] px-6 py-5 rounded-[2rem] text-[12px] font-mono leading-relaxed transition-all shadow-md ${
                 m.role === 'user' 
-                  ? 'bg-slate-100 dark:bg-cyan-500/10 border border-slate-200 dark:border-cyan-500/20 text-slate-900 dark:text-cyan-50' 
-                  : 'bg-white dark:bg-slate-900/60 border border-slate-100 dark:border-cyan-400/10 text-slate-700 dark:text-cyan-400'
+                  ? 'bg-cyan-600 text-white shadow-cyan-500/10' 
+                  : 'bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-cyan-400/10 text-slate-800 dark:text-cyan-50'
               }`}>
                 {m.text}
                 {m.sources && m.sources.length > 0 && (
-                  <div className="mt-4 pt-3 border-t border-slate-200 dark:border-cyan-400/10 space-y-2">
-                     <div className="text-[8px] orbitron text-slate-400 dark:text-cyan-700 font-black uppercase flex items-center gap-2">
-                        <svg viewBox="0 0 24 24" className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="4"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                        Intelligence_Sources
-                     </div>
-                     <div className="flex flex-col gap-1.5">
+                  <div className="mt-5 pt-4 border-t border-slate-100 dark:border-white/5 flex flex-col gap-3">
+                     <span className="text-[9px] orbitron text-slate-500 dark:text-cyan-700 font-black uppercase italic">Intelligence_Verification_Nodes</span>
+                     <div className="flex flex-col gap-2">
                         {m.sources.map((s, idx) => (
-                          <a key={idx} href={s.uri} target="_blank" rel="noopener noreferrer" className="text-[9px] text-sky-600 dark:text-cyan-500/60 hover:text-sky-300 transition-all truncate block border-l-2 border-slate-200 dark:border-cyan-500/20 pl-3 py-1 bg-slate-50 dark:bg-cyan-500/5 rounded-r-md">
+                          <a key={idx} href={s.uri} target="_blank" rel="noopener noreferrer" className="text-[10px] text-cyan-600 dark:text-cyan-500/70 hover:underline truncate block border-l-2 border-cyan-500/30 pl-4 py-1 bg-cyan-500/5 rounded-r-lg">
                              {s.title || s.uri}
                           </a>
                         ))}
@@ -82,29 +78,37 @@ export const LiveChat: React.FC<LiveChatProps> = ({ messages, isOpen, onSendMess
               </div>
             </div>
           ))}
+
           {isProcessing && (
-            <div className="flex gap-1.5 items-center px-2 py-3">
-              <div className="w-1.5 h-1.5 bg-sky-500 dark:bg-cyan-400 animate-bounce"></div>
-              <div className="w-1.5 h-1.5 bg-sky-500 dark:bg-cyan-400 animate-bounce [animation-delay:0.2s]"></div>
-              <div className="w-1.5 h-1.5 bg-sky-500 dark:bg-cyan-400 animate-bounce [animation-delay:0.4s]"></div>
-              <span className="text-[8px] orbitron text-slate-400 dark:text-cyan-800 ml-2 font-black uppercase animate-pulse">Neural_Processing...</span>
+            <div className="flex flex-col gap-4 p-6 bg-cyan-500/5 rounded-[2.5rem] border border-cyan-500/10 animate-in zoom-in duration-500">
+              <div className="flex gap-2.5 items-center">
+                <div className="w-2 h-2 bg-cyan-500 animate-bounce"></div>
+                <div className="w-2 h-2 bg-cyan-500 animate-bounce [animation-delay:0.2s]"></div>
+                <div className="w-2 h-2 bg-cyan-500 animate-bounce [animation-delay:0.4s]"></div>
+                <span className="text-[10px] orbitron text-cyan-800 dark:text-cyan-600 font-black uppercase tracking-[0.2em] ml-2">Internal_Neural_Debate</span>
+              </div>
+              <div className="space-y-2 border-l-2 border-cyan-500/20 pl-5 py-1">
+                 <div className="text-[8px] font-mono text-cyan-600/80 uppercase">>> ARCHITECT: Mapping strategy vector Gamma-5...</div>
+                 <div className="text-[8px] font-mono text-cyan-600/80 uppercase">>> SEARCHER: Scraping deep-web layer 7 caches...</div>
+                 <div className="text-[8px] font-mono text-cyan-600/80 uppercase">>> LOGIC_GATE: Conflict resolution in progress...</div>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Command Input Area */}
-        <div className="p-4 bg-slate-50 dark:bg-black/40 border-t border-slate-200 dark:border-cyan-500/10">
+        {/* PROFESSIONAL COMMAND INPUT */}
+        <div className="p-6 bg-slate-100 dark:bg-black/50 border-t border-slate-200 dark:border-cyan-500/10">
           <form onSubmit={handleSubmit} className="relative">
-            <div className="relative flex items-center bg-white dark:bg-black/80 border-2 border-slate-200 dark:border-cyan-500/30 rounded-2xl overflow-hidden px-4 py-3 focus-within:border-sky-500 dark:focus-within:border-cyan-400 transition-all shadow-lg">
-              <span className="text-slate-400 dark:text-cyan-500/60 font-black mr-2 text-[12px] orbitron">$</span>
+            <div className="relative flex items-center bg-white dark:bg-black/80 border-2 border-slate-300 dark:border-cyan-500/40 rounded-[1.8rem] overflow-hidden px-6 py-4 focus-within:border-cyan-500 transition-all shadow-2xl">
+              <span className="text-cyan-500 font-black mr-3 text-[14px] orbitron">></span>
               <input 
                 ref={inputRef}
                 type="text"
-                placeholder="PROMPT_SYSTEM..."
-                className="w-full bg-transparent outline-none text-[12px] font-mono text-slate-900 dark:text-cyan-100"
+                placeholder="PROMPT_NEXUS_CORE_OS..."
+                className="w-full bg-transparent outline-none text-[13px] font-mono text-slate-900 dark:text-cyan-50 placeholder:text-slate-400"
               />
-              <button type="submit" className="ml-3 text-sky-600 dark:text-cyan-500">
-                <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="3">
+              <button type="submit" className="ml-4 text-cyan-600 hover:text-cyan-400 transition-colors">
+                <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="3.5">
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </button>
