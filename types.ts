@@ -69,6 +69,9 @@ export enum SessionState {
 export interface SystemStatus {
   threatLevel: 'MINIMAL' | 'ELEVATED' | 'CRITICAL';
   isSearching?: boolean;
+  motionDetected?: boolean;
+  motionSensitivity?: number;
+  isBuilding?: boolean;
   battery?: { level: number; charging: boolean; };
   location?: { lat: number; lng: number; accuracy: number; };
   networkType?: string;
@@ -124,4 +127,21 @@ export interface N8NWorkflow {
   status: 'ACTIVE' | 'IDLE' | 'EXECUTING';
   triggers: string[];
   lastRun?: number;
+}
+
+export interface MasterProject {
+  id: string;
+  name: string;
+  target: 'WEB' | 'IOS' | 'ANDROID' | 'WINDOWS';
+  status: 'SYNTHESIZING' | 'MAPPING' | 'EXTRACTING' | 'COMPLETE';
+  progress: number;
+  roadmap: {
+    phase: string;
+    details: string;
+    completed: boolean;
+  }[];
+  intel: {
+    source: string;
+    data: string;
+  }[];
 }

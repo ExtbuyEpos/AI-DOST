@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { AIPersonality, SystemStatus } from '../types';
 
@@ -34,12 +35,12 @@ export const JarvisHUD: React.FC<JarvisHUDProps> = ({
       setTelemetry({
         sync: 99.9 + Math.random() * 0.09,
         ping: Math.floor(Math.random() * 6) + 3,
-        cpu: Math.floor(Math.random() * 10) + 5,
+        cpu: systemInfo?.isBuilding ? (45 + Math.random() * 20) : (Math.floor(Math.random() * 10) + 5),
         mem: 3.4 + Math.random() * 0.2
       });
     }, 4000);
     return () => clearInterval(interval);
-  }, []);
+  }, [systemInfo?.isBuilding]);
 
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none">
@@ -63,6 +64,28 @@ export const JarvisHUD: React.FC<JarvisHUDProps> = ({
             <span className={`text-sm md:text-lg font-mono font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{telemetry.sync.toFixed(3)}%_DOST_UPLINK</span>
           </div>
         </div>
+      </div>
+
+      {/* MOTION SENSOR OVERLAY */}
+      <div className="absolute top-40 left-10 flex flex-col gap-3 pointer-events-auto">
+        <div className={`hud-glass px-6 py-3 rounded-2xl flex items-center gap-4 border transition-all duration-500 ${systemInfo?.motionDetected ? 'bg-rose-500/20 border-rose-500 shadow-[0_0_30px_rgba(244,63,94,0.3)]' : 'border-white/10'}`}>
+          <div className={`w-2 h-2 rounded-full ${systemInfo?.motionDetected ? 'bg-rose-500 animate-ping' : 'bg-cyan-500'}`}></div>
+          <div className="flex flex-col">
+            <span className={`text-[8px] orbitron font-black uppercase tracking-widest ${systemInfo?.motionDetected ? 'text-rose-500' : 'text-slate-500'}`}>
+              Neural_Motion_Sensor
+            </span>
+            <span className={`text-[10px] orbitron font-bold ${systemInfo?.motionDetected ? 'text-white' : 'text-cyan-800'}`}>
+              {systemInfo?.motionDetected ? 'ALERT: MOTION DETECTED' : 'SECTOR_SECURE'}
+            </span>
+          </div>
+        </div>
+        
+        {systemInfo?.isBuilding && (
+          <div className="hud-glass px-6 py-3 rounded-2xl flex items-center gap-4 border border-cyan-500/40 bg-cyan-500/10 animate-in slide-in-from-left-4">
+             <div className="w-2 h-2 bg-cyan-400 rounded-full animate-[ping_1.5s_infinite]"></div>
+             <span className="text-[10px] orbitron font-black text-white uppercase tracking-widest">DEV_CORE_ACTIVE</span>
+          </div>
+        )}
       </div>
 
       {/* TOP RIGHT: SYSTEM TOGGLES */}

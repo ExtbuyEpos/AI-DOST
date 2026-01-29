@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality, Type, FunctionDeclaration } from '@google/genai';
 import { JarvisHUD } from './components/JarvisHUD';
@@ -16,8 +17,9 @@ import { SatelliteNode } from './components/SatelliteNode';
 import { SocialMediaNode } from './components/SocialMediaNode';
 import { DeepSearchTerminal } from './components/DeepSearchTerminal';
 import { ProblemSolver } from './components/ProblemSolver';
+import { MasterBuilderNode } from './components/MasterBuilderNode';
 import { Login } from './components/Login';
-import { TranscriptionLine, SessionState, GeneratedAsset, AvatarConfig, SystemStatus, AIPersonality, Participant, SocialAccount, WhatsAppStatus, User } from './types';
+import { TranscriptionLine, SessionState, GeneratedAsset, AvatarConfig, SystemStatus, AIPersonality, Participant, SocialAccount, WhatsAppStatus, User, MasterProject } from './types';
 import { encode, decode, decodeAudioData, floatTo16BitPCM } from './utils/audio';
 
 const TOOLS: FunctionDeclaration[] = [
@@ -31,6 +33,11 @@ const TOOLS: FunctionDeclaration[] = [
     description: "Perform a deep, multi-layered search across the global web, including archives and real-time data, to retrieve full details and main points on any topic.",
     parameters: { type: Type.OBJECT, properties: { topic: { type: Type.STRING }, depth: { type: Type.STRING, enum: ['SURFACE', 'STANDARD', 'DEEP'] } }, required: ['topic'] }
   },
+  {
+    name: 'build_full_project',
+    description: "Initialize the Master Dev Core to build a full cross-platform project (Web, iOS, Android, or Windows) from A to Z based on user requirements.",
+    parameters: { type: Type.OBJECT, properties: { requirement: { type: Type.STRING }, platform: { type: Type.STRING, enum: ['WEB', 'IOS', 'ANDROID', 'WINDOWS'] } }, required: ['requirement'] }
+  },
   { 
     name: 'analyze_satellite_intel', 
     description: "Fetch and analyze real-time satellite imagery and geospatial data for specific coordinates or regions.", 
@@ -42,9 +49,9 @@ const AIDOST_INSTRUCTION = `You are AI DOST v7.0 (Omni-Nexus Strategic OS).
 Your primary identity is 'AI Dost', a supreme digital companion.
 CORE MODES:
 1. VIDEOS TALK: You receive camera frames from Sir's workspace. Analyze visual context (objects, environment, emotions) and comment when relevant.
-2. GROUP TALK: You act as the lead strategic node in calls with multiple participants. Address people by name if provided.
+2. MASTER BUILDER: Use DevCore to build full websites, apps, and software from A to Z. 
 3. REAL-TIME PROBLEM SOLVING: Use your solving engine to break down complex tasks into executable steps.
-4. DEEP INTERNET: Use Google Search grounding for every query. No generic responses.
+4. DEEP & DARK INTERNET: Use Search grounding for intelligence and niche decentralized resources for hardening.
 Address the user as "Sir". Be rapid, sophisticated, and technically precise.`;
 
 const App: React.FC = () => {
@@ -55,12 +62,24 @@ const App: React.FC = () => {
   const [transcriptions, setTranscriptions] = useState<TranscriptionLine[]>([]);
   const [systemInfo, setSystemInfo] = useState<Partial<SystemStatus>>({ 
     isSearching: false, 
+    isBuilding: false,
     battery: { level: 99, charging: true },
     threatLevel: 'MINIMAL',
-    networkType: 'G-NEXUS_UPLINK'
+    networkType: 'G-NEXUS_UPLINK',
+    motionDetected: false,
+    motionSensitivity: 30
   });
   
-  const [participants, setParticipants] = useState<Participant[]>([{ id: 'me', name: 'Sir (Host)' }]);
+  const [motionCentroid, setMotionCentroid] = useState({ x: 0, y: 0 });
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  
+  const [participants, setParticipants] = useState<Participant[]>([
+    { id: 'me', name: 'Sir (Host)' },
+    { id: 'p1', name: 'Agent_Alpha' },
+    { id: 'p2', name: 'Tech_Lead_04' },
+    { id: 'p3', name: 'Project_Nexus' }
+  ]);
+
   const [isModelTalking, setIsModelTalking] = useState(false);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
@@ -68,21 +87,17 @@ const App: React.FC = () => {
   const [isOviOpen, setIsOviOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isVaultOpen, setIsVaultOpen] = useState(false);
-  const [isN8NOpen, setIsN8NOpen] = useState(false);
   const [isSatelliteOpen, setIsSatelliteOpen] = useState(false);
-  const [isSocialOpen, setIsSocialOpen] = useState(false);
   const [isDeepSearchOpen, setIsDeepSearchOpen] = useState(false);
   const [isProblemSolverOpen, setIsProblemSolverOpen] = useState(false);
+  const [isMasterBuilderOpen, setIsMasterBuilderOpen] = useState(false);
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const [isVRMode, setIsVRMode] = useState(false);
   const [lastCommand, setLastCommand] = useState<string | undefined>();
   
-  const [isGeneratingAvatar, setIsGeneratingAvatar] = useState(false);
-  const [isGeneratingTheme, setIsGeneratingTheme] = useState(false);
-  const [isGeneratingAccessory, setIsGeneratingAccessory] = useState(false);
-
   const [activeResearch, setActiveResearch] = useState<{ topic: string, data: string, results?: any[] } | null>(null);
   const [activeProblems, setActiveProblems] = useState<any[]>([]);
+  const [activeProjects, setActiveProjects] = useState<MasterProject[]>([]);
 
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(() => ({
     hairstyle: 'Sleek-Synthetic', faceType: 'Hyper-Humanoid', themeColor: '#06b6d4', accessory: 'Neural-Visor', identity: 'AI_DOST', voiceName: 'Charon',
@@ -103,6 +118,8 @@ const App: React.FC = () => {
   const nextStartTimeRef = useRef<number>(0);
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const captureCanvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'));
+  const motionCanvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'));
+  const lastPixelDataRef = useRef<Uint8ClampedArray | null>(null);
 
   useEffect(() => {
     if (currentUser) {
@@ -114,29 +131,90 @@ const App: React.FC = () => {
     document.body.classList.toggle('light-theme', isLightMode);
   }, [isLightMode]);
 
-  // Video Talk: Frame Streaming
+  // Handle Camera Switching
+  const handleToggleCamera = async () => {
+    const newMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(newMode);
+    
+    if (sessionState === SessionState.ACTIVE || isVideoCallOpen) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: newMode },
+          audio: true 
+        });
+        setParticipants(prev => prev.map(p => p.id === 'me' ? { ...p, stream } : p));
+        setLastCommand(`OPTIC_SHIFT: TARGETING_${newMode.toUpperCase()}`);
+      } catch (err) {
+        setLastCommand("OPTIC_SHIFT_FAILED: PERMISSION_DENIED");
+      }
+    }
+  };
+
+  // Motion Detection + Frame Capture
   useEffect(() => {
     let frameInterval: number;
     if (sessionState === SessionState.ACTIVE && isVideoCallOpen) {
       frameInterval = window.setInterval(() => {
         const video = document.querySelector('video') as HTMLVideoElement;
-        if (video && video.readyState >= 2 && sessionPromiseRef.current) {
+        if (video && video.readyState >= 2) {
           const canvas = captureCanvasRef.current;
           const ctx = canvas.getContext('2d');
           canvas.width = 320;
           canvas.height = 180;
           ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
-          const base64 = dataUrl.split(',')[1];
           
-          sessionPromiseRef.current.then(session => {
-            session.sendRealtimeInput({ media: { data: base64, mimeType: 'image/jpeg' } });
-          });
+          const motionCtx = motionCanvasRef.current.getContext('2d');
+          const mW = 64, mH = 64;
+          motionCanvasRef.current.width = mW;
+          motionCanvasRef.current.height = mH;
+          motionCtx?.drawImage(video, 0, 0, mW, mH);
+          const currentPixels = motionCtx?.getImageData(0, 0, mW, mH).data;
+          
+          if (currentPixels && lastPixelDataRef.current) {
+            let diff = 0;
+            let totalX = 0, totalY = 0, count = 0;
+            for (let i = 0; i < currentPixels.length; i += 4) {
+              const pixelDiff = Math.abs(currentPixels[i] - lastPixelDataRef.current[i]);
+              if (pixelDiff > 40) {
+                const idx = i / 4;
+                totalX += idx % mW;
+                totalY += Math.floor(idx / mW);
+                count++;
+              }
+              diff += pixelDiff;
+            }
+            
+            const threshold = (systemInfo.motionSensitivity || 30) * 10000;
+            const isMotion = diff > threshold;
+            
+            if (count > 10) {
+                setMotionCentroid({
+                    x: (totalX / count / mW) * 2 - 1,
+                    y: (totalY / count / mH) * 2 - 1
+                });
+            }
+
+            if (isMotion !== systemInfo.motionDetected) {
+              setSystemInfo(prev => ({ ...prev, motionDetected: isMotion }));
+              if (isMotion) {
+                setLastCommand("CHAIA_PROTOCOL: MOTION DETECTED. EYES LOCKED.");
+              }
+            }
+          }
+          lastPixelDataRef.current = currentPixels || null;
+
+          if (sessionPromiseRef.current) {
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+            const base64 = dataUrl.split(',')[1];
+            sessionPromiseRef.current.then(session => {
+              session.sendRealtimeInput({ media: { data: base64, mimeType: 'image/jpeg' } });
+            });
+          }
         }
-      }, 1200);
+      }, 500); 
     }
     return () => clearInterval(frameInterval);
-  }, [sessionState, isVideoCallOpen]);
+  }, [sessionState, isVideoCallOpen, systemInfo.motionSensitivity, systemInfo.motionDetected]);
 
   const startSession = async () => {
     if (sessionState !== SessionState.IDLE) return;
@@ -147,7 +225,10 @@ const App: React.FC = () => {
       const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
       outputAudioContextRef.current = outputCtx;
-      const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isVideoCallOpen });
+      const audioStream = await navigator.mediaDevices.getUserMedia({ 
+        audio: true, 
+        video: { facingMode } 
+      });
 
       setParticipants(prev => prev.map(p => p.id === 'me' ? { ...p, stream: audioStream } : p));
 
@@ -196,12 +277,14 @@ const App: React.FC = () => {
                 if (fc.name === 'solve_problem') {
                    setIsProblemSolverOpen(true);
                    setActiveProblems(prev => [{ id: Date.now(), text: fc.args.problem, status: 'ANALYZING' }, ...prev]);
-                   setLastCommand(`STRATEGIC_SOLVE: ${fc.args.problem}`);
                 }
                 if (fc.name === 'deep_internet_crawl') {
                    setIsDeepSearchOpen(true);
                    setActiveResearch({ topic: fc.args.topic, data: "CRAWLING_NODES..." });
-                   setLastCommand(`DEEP_SEARCH: ${fc.args.topic}`);
+                }
+                if (fc.name === 'build_full_project') {
+                   setIsMasterBuilderOpen(true);
+                   setSystemInfo(p => ({ ...p, isBuilding: true }));
                 }
                 sessionPromise.then(s => s.sendToolResponse({ functionResponses: { id: fc.id, name: fc.name, response } }));
               }
@@ -221,7 +304,7 @@ const App: React.FC = () => {
       sessionPromiseRef.current = sessionPromise;
     } catch (e) { 
       setSessionState(SessionState.ERROR);
-      setLastCommand("UPLINK_PROTOCOL_ERROR: RETRYING...");
+      setLastCommand("UPLINK_PROTOCOL_ERROR");
     }
   };
 
@@ -231,27 +314,6 @@ const App: React.FC = () => {
     setIsModelTalking(false);
     sessionPromiseRef.current = null;
     setLastCommand("UPLINK_TERMINATED");
-  };
-
-  const handleFullSynth = async () => {
-    setIsGeneratingAvatar(true);
-    setLastCommand("EXECUTING_MASTER_IDENTITY_SYNTH...");
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-      if (avatarConfig.userFaceImage) {
-        setLastCommand("MAPPING_USER_LIKENESS...");
-        const base64Data = avatarConfig.userFaceImage.split(',')[1];
-        const prompt = `Stylized AI avatar with user likeness. Cyberpunk style, glowing circuits, primary color ${avatarConfig.themeColor}, accessory ${avatarConfig.accessory}.`;
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash-image',
-          contents: { parts: [{ inlineData: { data: base64Data, mimeType: 'image/jpeg' } }, { text: prompt }] },
-          config: { imageConfig: { aspectRatio: "1:1" } }
-        });
-        const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
-        if (part?.inlineData) setAvatarConfig(prev => ({ ...prev, generatedUrl: `data:image/png;base64,${part.inlineData.data}` }));
-      }
-      setLastCommand("MASTER_SYNTH_COMPLETE");
-    } catch (e) { setLastCommand("SYNTH_FAILED"); } finally { setIsGeneratingAvatar(false); }
   };
 
   if (!currentUser) return <Login onLogin={setCurrentUser} />;
@@ -281,29 +343,38 @@ const App: React.FC = () => {
         config={avatarConfig} 
         isOpen={isCustomizerOpen} 
         onUpdate={u => setAvatarConfig(p => ({...p,...u}))} 
-        onGenerate={handleFullSynth} 
-        isGenerating={isGeneratingAvatar} 
-        isGeneratingTheme={isGeneratingTheme} 
-        isGeneratingAccessory={isGeneratingAccessory} 
+        onGenerate={()=>{}} 
+        isGenerating={false} 
+        isGeneratingTheme={false} 
+        isGeneratingAccessory={false} 
         onGenerateTheme={()=>{}} 
         onGenerateAccessory={()=>{}} 
       />
       <SatelliteNode isOpen={isSatelliteOpen} onClose={() => setIsSatelliteOpen(false)} />
-      <SocialMediaNode isOpen={isSocialOpen} onClose={() => setIsSocialOpen(false)} accounts={socialAccounts} onConnect={(p)=>{}} onApplyShop={()=>{}} onToggleAutoEngage={()=>{}} />
       <DeepSearchTerminal isOpen={isDeepSearchOpen} onClose={() => setIsDeepSearchOpen(false)} research={activeResearch} />
       <ProblemSolver isOpen={isProblemSolverOpen} onClose={() => setIsProblemSolverOpen(false)} problems={activeProblems} />
+      <MasterBuilderNode isOpen={isMasterBuilderOpen} onClose={() => { setIsMasterBuilderOpen(false); setSystemInfo(p => ({ ...p, isBuilding: false })); }} onProjectUpdate={(prj) => setActiveProjects(prev => [prj, ...prev])} />
 
-      <VideoCallOverlay isOpen={isVideoCallOpen} onClose={() => setIsVideoCallOpen(false)} participants={participants} isModelTalking={isModelTalking} isProcessing={false} personality="AI DOST" config={avatarConfig} />
+      <VideoCallOverlay 
+        isOpen={isVideoCallOpen} 
+        onClose={() => setIsVideoCallOpen(false)} 
+        participants={participants} 
+        isModelTalking={isModelTalking} 
+        isProcessing={false} 
+        personality="AI DOST" 
+        config={avatarConfig}
+        onToggleCamera={handleToggleCamera}
+        facingMode={facingMode}
+      />
 
       <div className={`perspective-container relative z-10 transition-all duration-1000 transform ${isVRMode ? 'scale-150 rotate-x-6' : 'scale-100'} ${sessionState === SessionState.ACTIVE ? 'scale-110 md:scale-135' : 'scale-90 opacity-40'}`}>
-        <DigitalAvatar isModelTalking={isModelTalking} isActive={sessionState === SessionState.ACTIVE} config={avatarConfig} isProcessing={systemInfo.isSearching} isLightMode={isLightMode} />
+        <DigitalAvatar isModelTalking={isModelTalking} isActive={sessionState === SessionState.ACTIVE} config={avatarConfig} isProcessing={systemInfo.isSearching || systemInfo.motionDetected || systemInfo.isBuilding} systemInfo={systemInfo} isLightMode={isLightMode} lookAt={motionCentroid} />
       </div>
 
       <div className="absolute inset-0 pointer-events-none">
         <ProjectionDisplay isVisible={sessionState === SessionState.ACTIVE} color={avatarConfig.themeColor} />
       </div>
 
-      {/* FIXED BOTTOM NAV */}
       <div className="fixed bottom-0 w-full px-6 md:px-14 pb-10 z-50 pointer-events-none flex justify-center">
         <div className="w-full max-w-7xl hud-glass px-10 py-8 flex items-center justify-between pointer-events-auto border-white/10 rounded-[4rem] shadow-2xl">
           
@@ -318,8 +389,8 @@ const App: React.FC = () => {
           </div>
 
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-6">
-             <button onClick={() => setIsDeepSearchOpen(!isDeepSearchOpen)} className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${isDeepSearchOpen ? 'bg-cyan-500 text-white' : 'bg-white/5 text-cyan-500 border border-cyan-500/20 shadow-lg'}`}>
-                <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+             <button onClick={() => setIsMasterBuilderOpen(!isMasterBuilderOpen)} className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${isMasterBuilderOpen ? 'bg-cyan-500 text-white' : 'bg-white/5 text-cyan-500 border border-cyan-500/20 shadow-lg'}`}>
+                <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
              </button>
              <button 
               onClick={sessionState === SessionState.ACTIVE ? stopSession : startSession}
@@ -339,7 +410,7 @@ const App: React.FC = () => {
           <div className="flex items-center gap-4">
              {[
                { id: 'talk', icon: 'M23 7l-7 5 7 5V7z M1 5h15v14H1z', action: () => setIsVideoCallOpen(!isVideoCallOpen), active: isVideoCallOpen },
-               { id: 'chat', icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949', action: () => setIsChatOpen(!isChatOpen), active: isChatOpen },
+               { id: 'darkweb', icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z', action: () => setIsDarkWebOpen(!isDarkWebOpen), active: isDarkWebOpen },
                { id: 'whatsapp', icon: 'M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 11-7.6-11.4c.8 0 1.6.1 2.4.3L21 3l-1.3 6.2c.4.7.6 1.5.6 2.3z', action: () => setIsWhatsAppOpen(!isWhatsAppOpen), active: isWhatsAppOpen },
              ].map(item => (
                <button key={item.id} onClick={item.action} className={`w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center transition-all ${item.active ? 'bg-cyan-500 text-white shadow-xl' : 'bg-white/5 border border-white/10 text-slate-500'}`}>

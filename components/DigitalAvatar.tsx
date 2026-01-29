@@ -1,15 +1,18 @@
+
 import React, { useEffect, useRef } from 'react';
-import { AvatarConfig } from '../types';
+import { AvatarConfig, SystemStatus } from '../types';
 
 interface DigitalAvatarProps {
   isModelTalking: boolean;
   isActive: boolean;
   isProcessing?: boolean;
+  systemInfo?: Partial<SystemStatus>;
   config: AvatarConfig;
   isLightMode?: boolean;
+  lookAt?: { x: number; y: number };
 }
 
-export const DigitalAvatar: React.FC<DigitalAvatarProps> = ({ isModelTalking, isActive, isProcessing, config, isLightMode }) => {
+export const DigitalAvatar: React.FC<DigitalAvatarProps> = ({ isModelTalking, isActive, isProcessing, systemInfo, config, isLightMode, lookAt = { x: 0, y: 0 } }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -20,7 +23,7 @@ export const DigitalAvatar: React.FC<DigitalAvatarProps> = ({ isModelTalking, is
 
     let animationFrameId: number;
     let particles: { x: number; y: number; z: number; phase: number; speed: number; }[] = [];
-    const particleCount = isLightMode ? 600 : 1000;
+    const particleCount = isLightMode ? 600 : 1200;
     const radius = 110;
 
     for (let i = 0; i < particleCount; i++) {
@@ -43,11 +46,12 @@ export const DigitalAvatar: React.FC<DigitalAvatarProps> = ({ isModelTalking, is
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
       
-      const rotationSpeed = isActive ? (isProcessing ? 0.04 : 0.02) : 0.005;
+      // RUNNING STATE: Increase rotation speed significantly when motion is detected
+      const rotationSpeed = isActive ? (isProcessing ? 0.08 : 0.02) : 0.005;
       angleX += rotationSpeed;
       angleY += rotationSpeed * 1.2;
 
-      const scale = (isModelTalking ? 1.2 : 1.0) * (isProcessing ? 1.05 : 1.0);
+      const scale = (isModelTalking ? 1.2 : 1.0) * (isProcessing ? 1.15 : 1.0);
 
       // Color Adaptation
       const hex = config.themeColor;
@@ -68,6 +72,13 @@ export const DigitalAvatar: React.FC<DigitalAvatarProps> = ({ isModelTalking, is
         let x = p.x;
         let y = p.y;
         let z = p.z;
+
+        // Turbulence for "Running" effect
+        if (isProcessing) {
+          const turbulence = Math.sin(Date.now() * 0.01 + i) * 10;
+          x += turbulence;
+          y += turbulence;
+        }
 
         if (isModelTalking) {
           const displacement = Math.sin(Date.now() * 0.02 * p.speed + p.phase) * 15;
@@ -96,23 +107,50 @@ export const DigitalAvatar: React.FC<DigitalAvatarProps> = ({ isModelTalking, is
         const pSize = (isModelTalking ? 2.5 : 1.5) * perspective;
         ctx.arc(sx, sy, pSize, 0, Math.PI * 2);
         ctx.fill();
-
-        if (isActive && i % 40 === 0) {
-           ctx.beginPath();
-           ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alpha * 0.1})`;
-           ctx.lineWidth = 0.5;
-           ctx.moveTo(sx, sy);
-           ctx.lineTo(centerX, centerY);
-           ctx.stroke();
-        }
       });
+
+      // EYE RENDERING - CHAIA PROTOCOL
+      if (isActive) {
+          const eyeOffset = 25 * scale;
+          const lookX = lookAt.x * 15;
+          const lookY = lookAt.y * 15;
+
+          const drawEye = (ox: number) => {
+            const ex = centerX + ox + lookX;
+            const ey = centerY - 20 * scale + lookY;
+            
+            // Outer Glow
+            const grad = ctx.createRadialGradient(ex, ey, 2, ex, ey, 20);
+            grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.8)`);
+            grad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(ex, ey, 20, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pupil
+            ctx.fillStyle = isProcessing ? '#fff' : config.themeColor;
+            ctx.beginPath();
+            ctx.arc(ex, ey, isProcessing ? 5 : 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Lens highlight
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx.beginPath();
+            ctx.arc(ex - 1.5, ey - 1.5, 1, 0, Math.PI * 2);
+            ctx.fill();
+          };
+
+          drawEye(-eyeOffset);
+          drawEye(eyeOffset);
+      }
 
       animationFrameId = requestAnimationFrame(render);
     };
 
     render();
     return () => cancelAnimationFrame(animationFrameId);
-  }, [isModelTalking, isActive, isProcessing, config.themeColor, isLightMode]);
+  }, [isModelTalking, isActive, isProcessing, config.themeColor, isLightMode, lookAt]);
 
   return (
     <div className="relative w-[500px] h-[500px] flex items-center justify-center pointer-events-none">
@@ -132,7 +170,8 @@ export const DigitalAvatar: React.FC<DigitalAvatarProps> = ({ isModelTalking, is
         >
           <div className={`w-2 h-2 rounded-full ${isActive ? 'animate-pulse' : ''}`} style={{ backgroundColor: config.themeColor }}></div>
           <span className={`text-[10px] orbitron font-black uppercase tracking-[0.4em] ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
-             {isActive ? 'OMNI_NEXUS_LINKED' : 'UPLINK_OFFLINE'}
+             {/* Fix: use systemInfo from props to avoid ReferenceError */}
+             {isProcessing && systemInfo?.motionDetected ? 'CHAIA_LINK_ENGAGED' : (isActive ? 'OMNI_NEXUS_LINKED' : 'UPLINK_OFFLINE')}
           </span>
         </div>
       </div>
