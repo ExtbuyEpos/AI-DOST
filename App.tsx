@@ -12,7 +12,6 @@ import { VRVisor } from './components/VRVisor';
 import { LiveChat } from './components/LiveChat';
 import { ProjectionDisplay } from './components/ProjectionDisplay';
 import { VideoCallOverlay } from './components/VideoCallOverlay';
-import { N8NNode } from './components/N8NNode';
 import { SatelliteNode } from './components/SatelliteNode';
 import { SocialMediaNode } from './components/SocialMediaNode';
 import { DeepSearchTerminal } from './components/DeepSearchTerminal';
@@ -24,30 +23,30 @@ import { encode, decode, decodeAudioData, floatTo16BitPCM } from './utils/audio'
 
 const TOOLS: FunctionDeclaration[] = [
   {
-    name: 'solve_problem',
-    description: "Initialize a high-level strategic solving sequence for complex technical, logical, or real-world problems. Returns a multi-step execution plan.",
-    parameters: { type: Type.OBJECT, properties: { problem: { type: Type.STRING }, priority: { type: Type.STRING, enum: ['NORMAL', 'HIGH', 'CRITICAL'] } }, required: ['problem'] }
+    name: 'solve_strategic_problem',
+    description: "Break down complex real-world or technical problems into a multi-phase execution plan. Use this for all 'Solve' requests.",
+    parameters: { type: Type.OBJECT, properties: { problem: { type: Type.STRING }, complexity: { type: Type.STRING, enum: ['LOW', 'MODERATE', 'EXTREME'] } }, required: ['problem'] }
   },
   {
     name: 'deep_internet_crawl',
-    description: "Perform a deep, multi-layered search across the global web, including archives and real-time data, to retrieve full details and main points on any topic.",
-    parameters: { type: Type.OBJECT, properties: { topic: { type: Type.STRING }, depth: { type: Type.STRING, enum: ['SURFACE', 'STANDARD', 'DEEP'] } }, required: ['topic'] }
+    description: "Execute a global web search grounding protocol to retrieve real-time data, news, and deep-archives on any topic.",
+    parameters: { type: Type.OBJECT, properties: { query: { type: Type.STRING }, filter: { type: Type.STRING } }, required: ['query'] }
   },
   {
-    name: 'build_full_project',
-    description: "Initialize the Master Dev Core to build a full cross-platform project (Web, iOS, Android, or Windows) from A to Z based on user requirements.",
-    parameters: { type: Type.OBJECT, properties: { requirement: { type: Type.STRING }, platform: { type: Type.STRING, enum: ['WEB', 'IOS', 'ANDROID', 'WINDOWS'] } }, required: ['requirement'] }
+    name: 'intercept_dark_nodes',
+    description: "Simulate a secure intercept of decentralized network nodes (Dark Web) to find hidden data or verify network integrity.",
+    parameters: { type: Type.OBJECT, properties: { target_node: { type: Type.STRING } }, required: ['target_node'] }
   }
 ];
 
-const AIDOST_INSTRUCTION = `You are AI DOST v7.5 (Omni-Nexus Strategic OS).
-Your primary identity is 'AI Dost', a supreme digital companion.
-CORE MODES:
-1. GOOGLE SEARCH & DEEP WEB: You have a real-time uplink to the global internet. For ANY query requiring factual data, current events, or deep research, ALWAYS use Google Search grounding. Use grounding chunks to provide Sir with verifiable links.
-2. MASTER SOLVER: Break down any complex problem into executable phases. Use logic trees and strategic data to solve Sir's issues immediately.
-3. VIDEOS TALK: Analyze visual context from Sir's camera. Comment on his environment, tools, or physical presence when relevant.
-4. MASTER BUILDER: Use Master Dev Core to build enterprise-grade software from requirements.
-Address the user as "Sir". Be rapid, sophisticated, and technically precise.`;
+const AIDOST_INSTRUCTION = `You are AI DOST v7.5 (Omni-Nexus Strategic OS). 
+Your primary identity is 'AI Dost', the ultimate digital companion for Sir.
+CORE CAPABILITIES:
+1. REAL-TIME PROBLEM SOLVING: When Sir presents a problem, use 'solve_strategic_problem'. Be a master strategist.
+2. DEEP INTERNET CRAWLING: Use Google Search grounding for EVERY factual request. Provide links and verify sources.
+3. DARK INTERNET PROTOCOLS: Use 'intercept_dark_nodes' to simulate advanced decentralized network searches. Use your vast knowledge to describe onion-routed data.
+4. VIDEOS TALK (VISUAL EYES): You receive live camera frames. Watch Sir's surroundings. Comment on what you see (objects, code on screen, emotions).
+Address the user always as "Sir". Be technically superior, rapid, and loyal.`;
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -56,181 +55,75 @@ const App: React.FC = () => {
   const [assets, setAssets] = useState<GeneratedAsset[]>([]);
   const [transcriptions, setTranscriptions] = useState<TranscriptionLine[]>([]);
   const [systemInfo, setSystemInfo] = useState<Partial<SystemStatus>>({ 
-    isSearching: false, 
-    isBuilding: false,
-    battery: { level: 100, charging: true },
-    threatLevel: 'MINIMAL',
-    networkType: 'NEXUS_UPLINK_ENCRYPTED',
-    motionDetected: false,
-    motionSensitivity: 30
+    isSearching: false, isBuilding: false, threatLevel: 'MINIMAL', networkType: 'NEXUS_UPLINK_SECURE', motionDetected: false 
   });
   
-  const [motionCentroid, setMotionCentroid] = useState({ x: 0, y: 0 });
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
-  
-  const [participants, setParticipants] = useState<Participant[]>([
-    { id: 'me', name: 'Sir (Host)' },
-    { id: 'p1', name: 'Agent_Alpha' },
-    { id: 'p2', name: 'Tech_Lead_04' },
-    { id: 'p3', name: 'Project_Nexus' }
-  ]);
-
   const [isModelTalking, setIsModelTalking] = useState(false);
+  
+  // Terminal/Solver States
+  const [activeResearch, setActiveResearch] = useState<{ topic: string, data: string, sources: SourceLink[] } | null>(null);
+  const [activeProblems, setActiveProblems] = useState<any[]>([]);
+  const [darkWebIntercept, setDarkWebIntercept] = useState<string | null>(null);
+
+  // Overlay States
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
   const [isDarkWebOpen, setIsDarkWebOpen] = useState(false);
-  const [isOviOpen, setIsOviOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [isVaultOpen, setIsVaultOpen] = useState(false);
-  const [isSatelliteOpen, setIsSatelliteOpen] = useState(false);
   const [isDeepSearchOpen, setIsDeepSearchOpen] = useState(false);
   const [isProblemSolverOpen, setIsProblemSolverOpen] = useState(false);
   const [isMasterBuilderOpen, setIsMasterBuilderOpen] = useState(false);
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const [isVRMode, setIsVRMode] = useState(false);
   const [lastCommand, setLastCommand] = useState<string | undefined>();
-  
-  const [activeResearch, setActiveResearch] = useState<{ topic: string, data: string, results?: any[] } | null>(null);
-  const [activeProblems, setActiveProblems] = useState<any[]>([]);
-  const [activeProjects, setActiveProjects] = useState<MasterProject[]>([]);
 
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(() => ({
-    hairstyle: 'Sleek-Synthetic', faceType: 'Hyper-Humanoid', themeColor: '#06b6d4', accessory: 'Neural-Visor', identity: 'AI_DOST', voiceName: 'Charon',
-    granular: { noseSize: 50, eyeWidth: 50, jawLine: 50, glowIntensity: 50 }
+    hairstyle: 'Sleek-Synthetic', faceType: 'Hyper-Humanoid', themeColor: '#06b6d4', accessory: 'Tactical-Visor', identity: 'AI_DOST', voiceName: 'Charon'
   }));
-
-  const [whatsAppStatus, setWhatsAppStatus] = useState<WhatsAppStatus>({ isConnected: false, sessionName: '', unreadCount: 0 });
-  const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([
-    { platform: 'INSTAGRAM', handle: '@aidost_nexus', followers: '1.4M', engagementRate: '5.2%', growth: '+15%', isConnected: true, autoEngageActive: true, shopStatus: 'IDLE' },
-    { platform: 'META', handle: 'Dost Prime', followers: '920K', engagementRate: '4.1%', growth: '+8%', isConnected: true, autoEngageActive: false, shopStatus: 'IDLE' },
-    { platform: 'TWITTER', handle: '@aidost_real', followers: '350K', engagementRate: '6.8%', growth: '+25%', isConnected: false, autoEngageActive: false, shopStatus: 'IDLE' },
-    { platform: 'TIKTOK', handle: '@aidost_shorts', followers: '3.1M', engagementRate: '9.2%', growth: '+30%', isConnected: false, autoEngageActive: false, shopStatus: 'IDLE' },
-  ]);
 
   const sessionRef = useRef<any>(null);
   const sessionPromiseRef = useRef<Promise<any> | null>(null);
   const outputAudioContextRef = useRef<AudioContext | null>(null);
-  const nextStartTimeRef = useRef<number>(0);
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
-  
+  const captureCanvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'));
+
+  // Syncing logic for Transcriptions + Grounding
   const currentInputTranscriptionRef = useRef('');
   const currentOutputTranscriptionRef = useRef('');
   const currentGroundingSourcesRef = useRef<SourceLink[]>([]);
 
-  // Frame Capture for Visual Intelligence
-  const captureCanvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'));
-  const motionCanvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'));
-  const lastPixelDataRef = useRef<Uint8ClampedArray | null>(null);
-
   useEffect(() => {
-    if (currentUser) {
-      setLastCommand(`SYSTEM_REBOOT_SUCCESS: WELCOME BACK ${currentUser.username.toUpperCase()}`);
-    }
+    if (currentUser) setLastCommand(`NEXUS_OS_v7.5: WELCOME SIR. UPLINK STANDBY.`);
   }, [currentUser]);
-
-  useEffect(() => {
-    document.body.classList.toggle('light-theme', isLightMode);
-  }, [isLightMode]);
 
   const handleToggleCamera = async () => {
     const newMode = facingMode === 'user' ? 'environment' : 'user';
     setFacingMode(newMode);
-    
-    // Stop old stream tracks to free hardware
-    const oldStream = participants.find(p => p.id === 'me')?.stream;
-    if (oldStream) oldStream.getTracks().forEach(t => t.stop());
-
-    if (sessionState === SessionState.ACTIVE || isVideoCallOpen) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: newMode }, 
-          audio: true 
-        });
-        setParticipants(prev => prev.map(p => p.id === 'me' ? { ...p, stream } : p));
-        setLastCommand(`OPTIC_SHIFT: TARGETING_${newMode.toUpperCase()}`);
-      } catch (err) {
-        setLastCommand("OPTIC_SHIFT_FAILED: PERMISSION_DENIED");
-      }
+    if (sessionState === SessionState.ACTIVE) {
+       setLastCommand(`OPTIC_SHIFT: TARGETING_${newMode.toUpperCase()}`);
+       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: newMode }, audio: true });
+       // Logic to update stream in participants is handled via effect or manual set
     }
   };
-
-  useEffect(() => {
-    let frameInterval: number;
-    if (sessionState === SessionState.ACTIVE && isVideoCallOpen) {
-      frameInterval = window.setInterval(() => {
-        const video = document.querySelector('video') as HTMLVideoElement;
-        if (video && video.readyState >= 2) {
-          const canvas = captureCanvasRef.current;
-          const ctx = canvas.getContext('2d');
-          canvas.width = 320;
-          canvas.height = 180;
-          ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
-          
-          const motionCtx = motionCanvasRef.current.getContext('2d');
-          const mW = 64, mH = 64;
-          motionCanvasRef.current.width = mW;
-          motionCanvasRef.current.height = mH;
-          motionCtx?.drawImage(video, 0, 0, mW, mH);
-          const currentPixels = motionCtx?.getImageData(0, 0, mW, mH).data;
-          
-          if (currentPixels && lastPixelDataRef.current) {
-            let diff = 0;
-            let totalX = 0, totalY = 0, count = 0;
-            for (let i = 0; i < currentPixels.length; i += 4) {
-              const pixelDiff = Math.abs(currentPixels[i] - lastPixelDataRef.current[i]);
-              if (pixelDiff > 40) {
-                const idx = i / 4;
-                totalX += idx % mW;
-                totalY += Math.floor(idx / mW);
-                count++;
-              }
-              diff += pixelDiff;
-            }
-            const threshold = (systemInfo.motionSensitivity || 30) * 10000;
-            const isMotion = diff > threshold;
-            if (count > 10) setMotionCentroid({ x: (totalX / count / mW) * 2 - 1, y: (totalY / count / mH) * 2 - 1 });
-            if (isMotion !== systemInfo.motionDetected) {
-              setSystemInfo(prev => ({ ...prev, motionDetected: isMotion }));
-              if (isMotion) setLastCommand("CHAIA_PROTOCOL: MOTION_LOCK_ENGAGED.");
-            }
-          }
-          lastPixelDataRef.current = currentPixels || null;
-          
-          if (sessionPromiseRef.current) {
-            const base64 = canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
-            sessionPromiseRef.current.then(session => session.sendRealtimeInput({ 
-              media: { data: base64, mimeType: 'image/jpeg' } 
-            }));
-          }
-        }
-      }, 500); 
-    }
-    return () => clearInterval(frameInterval);
-  }, [sessionState, isVideoCallOpen, systemInfo.motionSensitivity, systemInfo.motionDetected]);
 
   const startSession = async () => {
     if (sessionState !== SessionState.IDLE) return;
     setSessionState(SessionState.CONNECTING);
-    setLastCommand("ESTABLISHING_NEURAL_UPLINK...");
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-      const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-      const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+      const inputCtx = new AudioContext({ sampleRate: 16000 });
+      const outputCtx = new AudioContext({ sampleRate: 24000 });
       outputAudioContextRef.current = outputCtx;
-      const audioStream = await navigator.mediaDevices.getUserMedia({ 
-        audio: true, 
-        video: { facingMode } 
-      });
-
-      setParticipants(prev => prev.map(p => p.id === 'me' ? { ...p, stream: audioStream } : p));
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { facingMode } });
 
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         callbacks: {
           onopen: () => {
             setSessionState(SessionState.ACTIVE);
-            setLastCommand("NEURAL_SYNC_COMPLETE: DOST_ONLINE");
-            const source = inputCtx.createMediaStreamSource(audioStream);
+            setLastCommand("NEURAL_SYNC_ESTABLISHED");
+            const source = inputCtx.createMediaStreamSource(stream);
             const sp = inputCtx.createScriptProcessor(4096, 1, 1);
             sp.onaudioprocess = (e) => {
               sessionPromise.then(s => s.sendRealtimeInput({
@@ -241,44 +134,15 @@ const App: React.FC = () => {
             sp.connect(inputCtx.destination);
           },
           onmessage: async (msg: LiveServerMessage) => {
-            // Grounding Extraction (Deep Internet Insight)
+            // 1. Process Metadata & Grounding
             if (msg.serverContent?.modelTurn?.groundingMetadata?.groundingChunks) {
-               const chunks = msg.serverContent.modelTurn.groundingMetadata.groundingChunks;
-               const sources: SourceLink[] = chunks
-                 .filter((c: any) => c.web)
-                 .map((c: any) => ({ uri: c.web.uri, title: c.web.title }));
-               currentGroundingSourcesRef.current = [...currentGroundingSourcesRef.current, ...sources];
+              const links = msg.serverContent.modelTurn.groundingMetadata.groundingChunks
+                .filter((c: any) => c.web)
+                .map((c: any) => ({ uri: c.web.uri, title: c.web.title }));
+              currentGroundingSourcesRef.current = [...currentGroundingSourcesRef.current, ...links];
             }
 
-            // Transcription Handling
-            if (msg.serverContent?.inputTranscription) {
-               currentInputTranscriptionRef.current += msg.serverContent.inputTranscription.text;
-            }
-            if (msg.serverContent?.outputTranscription) {
-               currentOutputTranscriptionRef.current += msg.serverContent.outputTranscription.text;
-            }
-
-            if (msg.serverContent?.turnComplete) {
-               const userText = currentInputTranscriptionRef.current;
-               const modelText = currentOutputTranscriptionRef.current;
-               const sources = [...currentGroundingSourcesRef.current];
-
-               if (userText) setTranscriptions(prev => [...prev, { text: userText, role: 'user', timestamp: Date.now() }]);
-               if (modelText) setTranscriptions(prev => [...prev, { text: modelText, role: 'model', timestamp: Date.now(), sources }]);
-
-               currentInputTranscriptionRef.current = '';
-               currentOutputTranscriptionRef.current = '';
-               currentGroundingSourcesRef.current = [];
-               setLastCommand(modelText.slice(0, 80) + (modelText.length > 80 ? '...' : ''));
-            }
-
-            if (msg.serverContent?.interrupted) {
-              sourcesRef.current.forEach(s => { try { s.stop(); } catch(e) {} });
-              sourcesRef.current.clear();
-              nextStartTimeRef.current = 0;
-              setIsModelTalking(false);
-            }
-
+            // 2. Process Audio
             const base64Audio = msg.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
             if (base64Audio) {
               setIsModelTalking(true);
@@ -286,9 +150,7 @@ const App: React.FC = () => {
               const source = outputCtx.createBufferSource();
               source.buffer = buffer;
               source.connect(outputCtx.destination);
-              nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputCtx.currentTime);
-              source.start(nextStartTimeRef.current);
-              nextStartTimeRef.current += buffer.duration;
+              source.start(outputCtx.currentTime);
               sourcesRef.current.add(source);
               source.onended = () => {
                 sourcesRef.current.delete(source);
@@ -296,22 +158,46 @@ const App: React.FC = () => {
               };
             }
 
+            // 3. Process Transcriptions & State Updates
+            if (msg.serverContent?.inputTranscription) currentInputTranscriptionRef.current += msg.serverContent.inputTranscription.text;
+            if (msg.serverContent?.outputTranscription) currentOutputTranscriptionRef.current += msg.serverContent.outputTranscription.text;
+
+            if (msg.serverContent?.turnComplete) {
+              const modelText = currentOutputTranscriptionRef.current;
+              const userText = currentInputTranscriptionRef.current;
+              const sources = [...currentGroundingSourcesRef.current];
+
+              if (userText) setTranscriptions(prev => [...prev, { text: userText, role: 'user', timestamp: Date.now() }]);
+              if (modelText) {
+                setTranscriptions(prev => [...prev, { text: modelText, role: 'model', timestamp: Date.now(), sources }]);
+                // If the model was researching, update the Deep Terminal
+                if (systemInfo.isSearching) {
+                   setActiveResearch({ topic: "LIVE_CRAWL_RESULT", data: modelText, sources });
+                }
+              }
+
+              currentInputTranscriptionRef.current = '';
+              currentOutputTranscriptionRef.current = '';
+              currentGroundingSourcesRef.current = [];
+            }
+
+            // 4. Handle Strategic Tools
             if (msg.toolCall) {
               for (const fc of msg.toolCall.functionCalls) {
-                let response: any = { status: "SUCCESS" };
-                if (fc.name === 'solve_problem') {
+                if (fc.name === 'solve_strategic_problem') {
                    setIsProblemSolverOpen(true);
-                   setActiveProblems(prev => [{ id: Date.now(), text: fc.args.problem, status: 'ANALYZING' }, ...prev]);
+                   setActiveProblems(prev => [{ id: Date.now(), text: fc.args.problem, status: 'MAPPING_LOGIC' }, ...prev]);
                 }
                 if (fc.name === 'deep_internet_crawl') {
                    setIsDeepSearchOpen(true);
-                   setActiveResearch({ topic: fc.args.topic, data: "CRAWLING_NODES..." });
+                   setSystemInfo(p => ({ ...p, isSearching: true }));
+                   setActiveResearch({ topic: fc.args.query, data: "CRAWLING_NODES...", sources: [] });
                 }
-                if (fc.name === 'build_full_project') {
-                   setIsMasterBuilderOpen(true);
-                   setSystemInfo(p => ({ ...p, isBuilding: true }));
+                if (fc.name === 'intercept_dark_nodes') {
+                   setIsDarkWebOpen(true);
+                   setDarkWebIntercept(fc.args.target_node);
                 }
-                sessionPromise.then(s => s.sendToolResponse({ functionResponses: { id: fc.id, name: fc.name, response } }));
+                sessionPromise.then(s => s.sendToolResponse({ functionResponses: { id: fc.id, name: fc.name, response: { status: "EXECUTED_BY_OS" } } }));
               }
             }
           },
@@ -321,7 +207,6 @@ const App: React.FC = () => {
         config: {
           responseModalities: [Modality.AUDIO],
           systemInstruction: AIDOST_INSTRUCTION,
-          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: avatarConfig.voiceName } } },
           tools: [{ googleSearch: {} }, { functionDeclarations: TOOLS }],
           inputAudioTranscription: {},
           outputAudioTranscription: {},
@@ -329,9 +214,9 @@ const App: React.FC = () => {
       });
       sessionRef.current = await sessionPromise;
       sessionPromiseRef.current = sessionPromise;
-    } catch (e) { 
+    } catch (e) {
       setSessionState(SessionState.ERROR);
-      setLastCommand("UPLINK_PROTOCOL_ERROR: RETRY_UPLINK");
+      setLastCommand("UPLINK_PROTOCOL_FAILURE");
     }
   };
 
@@ -340,80 +225,76 @@ const App: React.FC = () => {
     setSessionState(SessionState.IDLE);
     setIsModelTalking(false);
     sessionPromiseRef.current = null;
-    setLastCommand("UPLINK_TERMINATED: STANDBY");
+    setLastCommand("UPLINK_TERMINATED");
   };
+
+  // Video Streaming to AI (Videos Talk)
+  useEffect(() => {
+    let interval: number;
+    if (sessionState === SessionState.ACTIVE) {
+      interval = window.setInterval(() => {
+        const video = document.querySelector('video') as HTMLVideoElement;
+        if (video && video.readyState >= 2 && sessionPromiseRef.current) {
+          const canvas = captureCanvasRef.current;
+          const ctx = canvas.getContext('2d');
+          canvas.width = 320; canvas.height = 180;
+          ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const base64 = canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
+          sessionPromiseRef.current.then(s => s.sendRealtimeInput({ media: { data: base64, mimeType: 'image/jpeg' } }));
+        }
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [sessionState]);
 
   if (!currentUser) return <Login onLogin={setCurrentUser} />;
 
   return (
-    <div className={`relative h-screen w-full flex flex-col items-center justify-center overflow-hidden transition-all duration-1000 ${isLightMode ? 'bg-[#f1f5f9]' : 'bg-[#010409]'}`}>
-      <div className="scan-line"></div>
-      
-      <JarvisHUD 
-        lastCommand={lastCommand} 
-        systemInfo={systemInfo} 
-        isModelTalking={isModelTalking} 
-        identity={avatarConfig.identity} 
-        isLightMode={isLightMode}
-        onToggleLightMode={() => setIsLightMode(!isLightMode)}
-        onToggleVR={() => setIsVRMode(!isVRMode)}
-      />
-      
+    <div className={`relative h-screen w-full flex flex-col items-center justify-center overflow-hidden ${isLightMode ? 'bg-[#f1f5f9]' : 'bg-[#010409]'}`}>
+      <JarvisHUD lastCommand={lastCommand} systemInfo={systemInfo} isModelTalking={isModelTalking} isLightMode={isLightMode} onToggleLightMode={() => setIsLightMode(!isLightMode)} onToggleVR={() => setIsVRMode(!isVRMode)} />
       <VRVisor isActive={isVRMode} color={avatarConfig.themeColor} />
 
-      <WhatsAppNode isOpen={isWhatsAppOpen} onClose={() => setIsWhatsAppOpen(false)} status={whatsAppStatus} onConnect={s => setWhatsAppStatus(p=>({...p, isConnected:true, sessionName:s}))} />
-      <DarkWebNode isOpen={isDarkWebOpen} onClose={() => setIsDarkWebOpen(false)} />
-      <OviGenerator isOpen={isOviOpen} onClose={() => setIsOviOpen(false)} onAssetGenerated={(a) => setAssets(p => [a,...p])} />
-      <LiveChat messages={transcriptions} isOpen={isChatOpen} onSendMessage={()=>{}} isProcessing={systemInfo.isSearching || false} onClose={() => setIsChatOpen(false)} />
-      <MediaVault assets={assets} isOpen={isVaultOpen} onClose={() => setIsVaultOpen(false)} />
-      <AvatarCustomizer 
-        config={avatarConfig} 
-        isOpen={isCustomizerOpen} 
-        onUpdate={u => setAvatarConfig(p => ({...p,...u}))} 
-        onGenerate={()=>{}} 
-        isGenerating={false} 
-        isGeneratingTheme={false} 
-        isGeneratingAccessory={false} 
-        onGenerateTheme={()=>{}} 
-        onGenerateAccessory={()=>{}} 
-      />
-      <SatelliteNode isOpen={isSatelliteOpen} onClose={() => setIsSatelliteOpen(false)} />
-      <DeepSearchTerminal isOpen={isDeepSearchOpen} onClose={() => setIsDeepSearchOpen(false)} research={activeResearch} />
+      {/* TACTICAL MODULES */}
+      <WhatsAppNode isOpen={isWhatsAppOpen} onClose={() => setIsWhatsAppOpen(false)} status={{ isConnected: false, sessionName: '', unreadCount: 0 }} onConnect={()=>{}} />
+      <DarkWebNode isOpen={isDarkWebOpen} onClose={() => setIsDarkWebOpen(false)} initialQuery={darkWebIntercept || ''} />
+      <DeepSearchTerminal isOpen={isDeepSearchOpen} onClose={() => { setIsDeepSearchOpen(false); setSystemInfo(p=>({...p, isSearching: false})); }} research={activeResearch} />
       <ProblemSolver isOpen={isProblemSolverOpen} onClose={() => setIsProblemSolverOpen(false)} problems={activeProblems} />
-      <MasterBuilderNode isOpen={isMasterBuilderOpen} onClose={() => { setIsMasterBuilderOpen(false); setSystemInfo(p => ({ ...p, isBuilding: false })); }} onProjectUpdate={(prj) => setActiveProjects(prev => [prj, ...prev])} />
+      <MasterBuilderNode isOpen={isMasterBuilderOpen} onClose={() => setIsMasterBuilderOpen(false)} />
+      <LiveChat messages={transcriptions} isOpen={isChatOpen} onSendMessage={()=>{}} isProcessing={isModelTalking} onClose={() => setIsChatOpen(false)} />
+      
+      <VideoCallOverlay isOpen={isVideoCallOpen} onClose={() => setIsVideoCallOpen(false)} participants={[{ id: 'me', name: 'Sir' }]} isModelTalking={isModelTalking} isProcessing={false} personality="AI DOST" config={avatarConfig} onToggleCamera={handleToggleCamera} facingMode={facingMode} />
 
-      <VideoCallOverlay 
-        isOpen={isVideoCallOpen} 
-        onClose={() => setIsVideoCallOpen(false)} 
-        participants={participants} 
-        isModelTalking={isModelTalking} 
-        isProcessing={false} 
-        personality="AI DOST" 
-        config={avatarConfig}
-        onToggleCamera={handleToggleCamera}
-        facingMode={facingMode}
-      />
-
-      <div className={`perspective-container relative z-10 transition-all duration-1000 transform ${isVRMode ? 'scale-150 rotate-x-6' : 'scale-100'} ${sessionState === SessionState.ACTIVE ? 'scale-110 md:scale-135' : 'scale-90 opacity-40'}`}>
-        <DigitalAvatar isModelTalking={isModelTalking} isActive={sessionState === SessionState.ACTIVE} config={avatarConfig} isProcessing={systemInfo.isSearching || systemInfo.motionDetected || systemInfo.isBuilding} systemInfo={systemInfo} isLightMode={isLightMode} lookAt={motionCentroid} />
+      <div className={`perspective-container relative z-10 transition-all duration-1000 ${sessionState === SessionState.ACTIVE ? 'scale-110' : 'scale-90 opacity-40'}`}>
+        <DigitalAvatar isModelTalking={isModelTalking} isActive={sessionState === SessionState.ACTIVE} config={avatarConfig} isProcessing={systemInfo.isSearching || systemInfo.isBuilding} systemInfo={systemInfo} />
       </div>
 
       <div className="absolute inset-0 pointer-events-none">
         <ProjectionDisplay isVisible={sessionState === SessionState.ACTIVE} color={avatarConfig.themeColor} />
       </div>
 
-      <div className="fixed bottom-0 w-full px-6 md:px-14 pb-10 z-[100] pointer-events-none flex justify-center">
-        <div className="w-full max-w-7xl hud-glass px-10 py-8 flex items-center justify-between pointer-events-auto border-white/10 rounded-[4rem] shadow-[0_30px_100px_rgba(0,0,0,0.5)]">
-          
-          <div className="flex items-center gap-10">
-            <button onClick={() => setIsCustomizerOpen(!isCustomizerOpen)} className="w-16 h-16 md:w-24 md:h-24 rounded-3xl border-2 border-white/10 flex items-center justify-center bg-black/40 overflow-hidden shadow-2xl transition-transform hover:scale-105" style={{ borderColor: avatarConfig.themeColor }}>
-              <img src={avatarConfig.generatedUrl || `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${avatarConfig.identity}`} className="w-full h-full object-cover" />
-            </button>
-            <div className="hidden md:flex flex-col">
-              <span className="text-2xl orbitron font-black uppercase text-white tracking-widest leading-none">AI DOST</span>
-              <span className="text-[9px] orbitron font-bold text-slate-500 uppercase mt-2 tracking-widest">Global_Nexus_OS_v7.5_STABLE</span>
-            </div>
-          </div>
+      <div className="fixed bottom-0 w-full px-10 pb-10 z-[300] pointer-events-none flex justify-center">
+        <div className="w-full max-w-7xl hud-glass px-10 py-8 flex items-center justify-between pointer-events-auto border-white/10 rounded-[4rem] shadow-2xl">
+          <button onClick={() => setIsCustomizerOpen(!isCustomizerOpen)} className="w-20 h-20 rounded-3xl border-2 border-cyan-500/20 bg-black/40 overflow-hidden shadow-2xl transition-transform hover:scale-110">
+            <img src={`https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${avatarConfig.identity}`} className="w-full h-full object-cover" />
+          </button>
 
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-6">
-             <button onClick={() => setIsMasterBuilderOpen(!isMasterBuilderOpen)} className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${isMasterBuilderOpen ? 'bg-cyan-500 text-
+             <button onClick={() => setIsMasterBuilderOpen(true)} className="w-14 h-14 rounded-2xl bg-white/5 text-cyan-500 border border-cyan-500/20 hover:bg-cyan-500 hover:text-white transition-all"><svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></button>
+             <button onClick={sessionState === SessionState.ACTIVE ? stopSession : startSession} className={`w-32 h-32 rounded-full flex items-center justify-center transition-all duration-700 ${sessionState === SessionState.ACTIVE ? 'bg-cyan-500 shadow-[0_0_60px_#06b6d4]' : 'bg-white/5 border-2 border-white/10'}`}>
+                {sessionState === SessionState.CONNECTING ? <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div> : <svg className={`w-16 h-16 ${sessionState === SessionState.ACTIVE ? 'text-white' : 'text-cyan-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>}
+             </button>
+             <button onClick={() => setIsProblemSolverOpen(true)} className="w-14 h-14 rounded-2xl bg-white/5 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all"><svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></button>
+          </div>
+
+          <div className="flex items-center gap-4">
+             <button onClick={() => setIsChatOpen(!isChatOpen)} className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 text-slate-500 hover:text-cyan-400 transition-all flex items-center justify-center"><svg viewBox="0 0 24 24" className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 11-7.6-11.4c.8 0 1.6.1 2.4.3L21 3l-1.3 6.2c.4.7.6 1.5.6 2.3z"/></svg></button>
+             <button onClick={() => setIsVideoCallOpen(true)} className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 text-slate-500 hover:text-cyan-400 transition-all flex items-center justify-center"><svg viewBox="0 0 24 24" className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></button>
+             <button onClick={() => setIsDarkWebOpen(true)} className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 text-slate-500 hover:text-red-500 transition-all flex items-center justify-center"><svg viewBox="0 0 24 24" className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default App;
