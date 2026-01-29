@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { SocialAccount, AutoComment } from '../types';
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 
 interface SocialMediaNodeProps {
   isOpen: boolean;
@@ -9,6 +10,21 @@ interface SocialMediaNodeProps {
   onConnect: (platform: string) => void;
   onApplyShop: (platform: string) => void;
   onToggleAutoEngage: (platform: string) => void;
+}
+
+interface BrandStrategy {
+  slogans: string[];
+  brandVoice: {
+    tone: string[];
+    description: string;
+    guidelines: string[];
+  };
+  audienceProfiles: {
+    name: string;
+    demographics: string;
+    psychographics: string;
+    interests: string[];
+  }[];
 }
 
 const PlatformIcon: React.FC<{ platform: string, className?: string, useColor?: boolean }> = ({ platform, className = "w-5 h-5", useColor = false }) => {
@@ -37,7 +53,7 @@ const PlatformIcon: React.FC<{ platform: string, className?: string, useColor?: 
     case 'TIKTOK':
       return (
         <svg viewBox="0 0 24 24" fill={useColor ? "#EE1D52" : "currentColor"} className={className}>
-          <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.06-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.59-1.01V15.5c0 1.28-.18 2.58-.72 3.75-.54 1.16-1.39 2.19-2.48 2.92-1.09.73-2.39 1.13-3.7 1.13-1.3 0-2.6-.4-3.7-1.13-1.09-.73-1.94-1.76-2.48-2.92-.54-1.17-.72-2.47-.72-3.75 0-1.28.18-2.58.72-3.75.54-1.16 1.39-2.19 2.48-2.92 1.09-.73 2.39-1.13 3.7-1.13 1.3 0 2.6.4 3.7 1.13 1.09.73 1.94 1.76 2.48 2.92.54 1.17.72 2.47.72 3.75 0 1.28-.18 2.58-.72 3.75-.54 1.16-1.39 2.19-2.48 2.92-1.09.73-2.39 1.13-3.7 1.13-.41 0-.82.04 1.23.13V4.03c-1.23.13-2.43.51-3.52 1.11C5.64 5.92 4.8 7.07 4.29 8.35c-.51 1.28-.68 2.68-.68 4.07s.17 2.79.68 4.07c.51 1.28 1.35 2.43 2.44 3.23 1.09.8 2.39 1.26 3.74 1.26 1.35 0 2.65-.46 3.74-1.26 1.09-.8 1.93-1.95 2.44-3.23.51-1.28.68-2.68.68-4.07V.02z"/>
+          <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.06-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.59-1.01V15.5c0 1.28-.18 2.58-.72 3.75-.54 1.16-1.39 2.19-2.48 2.92-1.09.73-2.39 1.13-3.7 1.13-1.3 0-2.6-.4-3.7-1.13-1.09-.73-1.94-1.76-2.48-2.92-.54-1.17-.72-2.47-.72-3.75 0-1.28.18-2.58.72-3.75.54-1.16 1.39-2.19 2.48-2.92 1.09-.73 2.39-1.13 3.7-1.13 1.3 0 2.6.4 3.7 1.13 1.09.73 1.94 1.76 2.48 2.92.54 1.17.72 2.47.72 3.75 0 1.28-.18-2.58-.72 3.75-.54 1.16-1.39 2.19-2.48 2.92-1.09.73-2.39 1.13-3.7 1.13-.41 0-.82.04 1.23.13V4.03c-1.23.13-2.43.51-3.52 1.11C5.64 5.92 4.8 7.07 4.29 8.35c-.51 1.28-.68 2.68-.68 4.07s.17 2.79.68 4.07c.51 1.28 1.35 2.43 2.44 3.23 1.09.8 2.39 1.26 3.74 1.26 1.35 0 2.65-.46 3.74-1.26 1.09-.8 1.93-1.95 2.44-3.23.51-1.28.68-2.68.68-4.07V.02z"/>
         </svg>
       );
     default:
@@ -47,25 +63,14 @@ const PlatformIcon: React.FC<{ platform: string, className?: string, useColor?: 
 
 const FollowerGrowthChart: React.FC<{ accounts: SocialAccount[] }> = ({ accounts }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const connectedAccounts = accounts.filter(a => a.isConnected);
+  const [hoverData, setHoverData] = useState<{ x: number, day: number, values: { platform: string, val: number, color: string }[] } | null>(null);
 
-  useEffect(() => {
-    if (!canvasRef.current || connectedAccounts.length === 0) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
-
-    const isLightMode = document.body.classList.contains('light-theme');
+  const chartData = useMemo(() => {
     const days = 30;
-    
-    const chartData = connectedAccounts.map(acc => {
-      const baseFollowers = parseInt(acc.followers.replace(/[^0-9]/g, '')) || 1000;
+    return connectedAccounts.map(acc => {
+      const baseFollowers = parseFloat(acc.followers.replace(/[^0-9.]/g, '')) * (acc.followers.includes('M') ? 1000000 : acc.followers.includes('K') ? 1000 : 1) || 1000;
       const growthRate = parseFloat(acc.growth.replace(/[+%]/g, '')) / 100 || 0.05;
       
       const points = Array.from({ length: days }, (_, i) => {
@@ -80,7 +85,22 @@ const FollowerGrowthChart: React.FC<{ accounts: SocialAccount[] }> = ({ accounts
       
       return { platform: acc.platform, points, color };
     });
+  }, [connectedAccounts]);
 
+  useEffect(() => {
+    if (!canvasRef.current || chartData.length === 0) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    const isLightMode = document.body.classList.contains('light-theme');
+    
     const render = () => {
       const w = rect.width;
       const h = rect.height;
@@ -92,7 +112,7 @@ const FollowerGrowthChart: React.FC<{ accounts: SocialAccount[] }> = ({ accounts
       ctx.clearRect(0, 0, w, h);
 
       // Cyber Grid
-      ctx.strokeStyle = isLightMode ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)';
+      ctx.strokeStyle = isLightMode ? 'rgba(0,0,0,0.03)' : 'rgba(6,182,212,0.05)';
       ctx.lineWidth = 1;
       for (let i = 0; i <= 6; i++) {
         const y = padY + (graphH / 6) * i;
@@ -104,37 +124,25 @@ const FollowerGrowthChart: React.FC<{ accounts: SocialAccount[] }> = ({ accounts
       }
 
       chartData.forEach(({ points, color }) => {
-        const max = Math.max(...points) * 1.02;
-        const min = Math.min(...points) * 0.98;
-        const range = max - min;
+        const max = Math.max(...points) * 1.05;
+        const min = Math.min(...points) * 0.95;
+        const range = max - min || 1;
 
         ctx.beginPath();
         ctx.strokeStyle = color;
         ctx.lineWidth = 3;
         ctx.lineJoin = 'round';
-        ctx.shadowBlur = isLightMode ? 0 : 25;
+        ctx.shadowBlur = isLightMode ? 0 : 20;
         ctx.shadowColor = color;
 
         points.forEach((p, i) => {
-          const x = padX + (i / (days - 1)) * graphW;
+          const x = padX + (i / (points.length - 1)) * graphW;
           const y = padY + graphH - ((p - min) / range) * graphH;
           if (i === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         });
         ctx.stroke();
         
-        // High-tech Data Points
-        points.forEach((p, i) => {
-          if (i % 5 === 0 || i === days - 1) {
-            const x = padX + (i / (days - 1)) * graphW;
-            const y = padY + graphH - ((p - min) / range) * graphH;
-            ctx.fillStyle = color;
-            ctx.shadowBlur = 10;
-            ctx.fillRect(x - 2, y - 2, 4, 4);
-          }
-        });
-
-        // Volume Gradient
         ctx.shadowBlur = 0;
         const grad = ctx.createLinearGradient(0, padY, 0, padY + graphH);
         grad.addColorStop(0, `${color}15`);
@@ -148,18 +156,94 @@ const FollowerGrowthChart: React.FC<{ accounts: SocialAccount[] }> = ({ accounts
       // Legends & Axis
       ctx.fillStyle = isLightMode ? '#64748b' : '#475569';
       ctx.font = 'bold 9px Orbitron';
-      ctx.fillText('AGGREGATE_NETWORK_TRAJECTORY', padX, padY - 20);
-      ctx.fillText('TIMESTAMP_NOW', padX + graphW - 50, padY + graphH + 30);
-      ctx.fillText('T_MINUS_30D', padX, padY + graphH + 30);
+      ctx.fillText('NETWORK_GROWTH_TRAJECTORY (30D)', padX, padY - 20);
+      ctx.fillText('PRESENT_T', padX + graphW - 50, padY + graphH + 30);
+      ctx.fillText('T-30D', padX, padY + graphH + 30);
     };
 
     render();
-  }, [connectedAccounts]);
+  }, [chartData]);
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!containerRef.current || chartData.length === 0) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const padX = 70;
+    const graphW = rect.width - padX * 2;
+    const mouseX = e.clientX - rect.left;
+    
+    if (mouseX < padX || mouseX > rect.width - padX) {
+      setHoverData(null);
+      return;
+    }
+
+    const dayIdx = Math.round(((mouseX - padX) / graphW) * 29);
+    const dayClamped = Math.max(0, Math.min(29, dayIdx));
+    
+    const values = chartData.map(c => ({
+      platform: c.platform,
+      val: c.points[dayClamped],
+      color: c.color
+    }));
+
+    setHoverData({
+      x: padX + (dayClamped / 29) * graphW,
+      day: 30 - dayClamped,
+      values
+    });
+  };
+
+  const formatVal = (v: number) => {
+    if (v >= 1000000) return (v / 1000000).toFixed(2) + 'M';
+    if (v >= 1000) return (v / 1000).toFixed(1) + 'K';
+    return Math.floor(v).toString();
+  };
 
   return (
-    <div className="w-full h-full relative group">
-      <div className="absolute inset-0 bg-slate-900/5 dark:bg-white/5 rounded-[3rem] border border-slate-200 dark:border-white/5 pointer-events-none"></div>
+    <div 
+      ref={containerRef}
+      className="w-full h-full relative group cursor-crosshair"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => setHoverData(null)}
+    >
+      <div className="absolute inset-0 bg-slate-900/5 dark:bg-cyan-500/5 rounded-[3rem] border border-slate-200 dark:border-cyan-500/10 pointer-events-none"></div>
       <canvas ref={canvasRef} className="w-full h-full" />
+      
+      {hoverData && (
+        <>
+          {/* Vertical Scan Line */}
+          <div 
+            className="absolute top-[60px] bottom-[60px] w-px bg-cyan-500/40 shadow-[0_0_10px_#06b6d4] pointer-events-none transition-all duration-75"
+            style={{ left: hoverData.x }}
+          >
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2 h-2 bg-cyan-500 rounded-full"></div>
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2 h-2 bg-cyan-500 rounded-full"></div>
+          </div>
+
+          {/* Holographic Tooltip */}
+          <div 
+            className="absolute top-20 pointer-events-none z-50 animate-in fade-in zoom-in duration-200"
+            style={{ left: hoverData.x + 15 }}
+          >
+            <div className="hud-glass p-5 rounded-2xl border-cyan-500/40 bg-black/80 backdrop-blur-xl flex flex-col gap-3 min-w-[140px] shadow-2xl">
+               <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                  <span className="text-[8px] orbitron font-black text-cyan-500 uppercase tracking-widest">Snapshot_T-{hoverData.day}D</span>
+                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse"></div>
+               </div>
+               <div className="flex flex-col gap-2">
+                  {hoverData.values.map(v => (
+                    <div key={v.platform} className="flex justify-between items-center gap-6">
+                       <div className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: v.color }}></div>
+                          <span className="text-[9px] orbitron font-bold text-slate-300">{v.platform}</span>
+                       </div>
+                       <span className="text-[10px] font-mono font-black text-white">{formatVal(v.val)}</span>
+                    </div>
+                  ))}
+               </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
@@ -169,6 +253,81 @@ export const SocialMediaNode: React.FC<SocialMediaNodeProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'NEXUS' | 'STRATEGY' | 'ANALYTICS' | 'OPERATIONS'>('NEXUS');
   const [liveComments, setLiveComments] = useState<AutoComment[]>([]);
+  const [brandEssence, setBrandEssence] = useState('');
+  const [strategy, setStrategy] = useState<BrandStrategy | null>(null);
+  const [isGeneratingStrategy, setIsGeneratingStrategy] = useState(false);
+
+  const connectedAccounts = useMemo(() => accounts.filter(a => a.isConnected), [accounts]);
+
+  const analysisMetrics = useMemo(() => {
+    const instagram = accounts.find(a => a.platform === 'INSTAGRAM');
+    const meta = accounts.find(a => a.platform === 'META');
+    
+    const getNumeric = (val: string) => parseFloat(val.replace(/[^0-9.]/g, '')) * (val.includes('M') ? 1000000 : val.includes('K') ? 1000 : 1);
+    
+    const igFollowers = instagram ? getNumeric(instagram.followers) : 0;
+    const igGrowth = instagram ? parseFloat(instagram.growth.replace(/[+%]/g, '')) : 0;
+    const metaFollowers = meta ? getNumeric(meta.followers) : 0;
+    const metaGrowth = meta ? parseFloat(meta.growth.replace(/[+%]/g, '')) : 0;
+
+    return {
+      igTotal: instagram?.followers || '0',
+      igNew: instagram ? `+${Math.floor((igFollowers * (igGrowth / 100)) / 1000)}K` : '0',
+      metaTotal: meta?.followers || '0',
+      metaNew: meta ? `+${Math.floor((metaFollowers * (metaGrowth / 100)) / 1000)}K` : '0',
+      combinedGrowth: `+${((igGrowth + metaGrowth) / 2).toFixed(1)}%`
+    };
+  }, [accounts]);
+
+  const handleGenerateStrategy = async () => {
+    if (!brandEssence.trim()) return;
+    setIsGeneratingStrategy(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Develop a comprehensive social media brand strategy for: "${brandEssence}". 
+        Consider the current audience context: ${connectedAccounts.map(a => `${a.platform} (${a.followers} followers)`).join(', ')}.
+        Return a highly creative, tactical strategy in JSON format.`,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              slogans: { type: Type.ARRAY, items: { type: Type.STRING } },
+              brandVoice: {
+                type: Type.OBJECT,
+                properties: {
+                  tone: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  description: { type: Type.STRING },
+                  guidelines: { type: Type.ARRAY, items: { type: Type.STRING } }
+                }
+              },
+              audienceProfiles: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    name: { type: Type.STRING },
+                    demographics: { type: Type.STRING },
+                    psychographics: { type: Type.STRING },
+                    interests: { type: Type.ARRAY, items: { type: Type.STRING } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+
+      const data = JSON.parse(response.text || '{}');
+      setStrategy(data);
+    } catch (e) {
+      console.error("Strategy synthesis failed:", e);
+    } finally {
+      setIsGeneratingStrategy(false);
+    }
+  };
 
   useEffect(() => {
     if (activeTab === 'OPERATIONS' && accounts.some(a => a.autoEngageActive)) {
@@ -176,7 +335,6 @@ export const SocialMediaNode: React.FC<SocialMediaNodeProps> = ({
         const connectedPlats = accounts.filter(a => a.isConnected && a.autoEngageActive);
         if (connectedPlats.length === 0) return;
 
-        const platforms: ('INSTAGRAM' | 'META' | 'TWITTER' | 'TIKTOK')[] = ['INSTAGRAM', 'META', 'TWITTER', 'TIKTOK'];
         const targets = ['@elonmusk', '@zuck', '@marquesbrownlee', '@techcrunch'];
         const contents = [
           "Neural optimization complete. Engagement rising, Sir.",
@@ -210,7 +368,6 @@ export const SocialMediaNode: React.FC<SocialMediaNodeProps> = ({
       
       <div className="relative w-full max-w-7xl h-[94vh] bg-white dark:bg-[#05070a] border border-slate-200 dark:border-cyan-500/20 rounded-[4.5rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.5)] pointer-events-auto flex flex-col animate-in zoom-in duration-700">
         
-        {/* COMMAND HEADER */}
         <div className="h-28 bg-slate-50/50 dark:bg-black/40 backdrop-blur-3xl flex items-center justify-between px-16 border-b border-slate-200 dark:border-white/5 z-30">
           <div className="flex items-center gap-16">
             <div className="flex items-center gap-6 group">
@@ -243,10 +400,8 @@ export const SocialMediaNode: React.FC<SocialMediaNodeProps> = ({
         </div>
 
         <div className="flex-1 flex overflow-hidden">
-          {/* TACTICAL SIDEBAR */}
           <div className="w-80 md:w-[22rem] border-r border-slate-200 dark:border-white/5 flex flex-col bg-slate-50/50 dark:bg-black/20 z-20">
              <div className="p-10 flex flex-col gap-12 h-full overflow-y-auto premium-scroll">
-                
                 <div className="space-y-8">
                    <span className="text-[11px] orbitron font-black text-slate-400 dark:text-cyan-500 uppercase tracking-[0.4em] flex items-center gap-3 italic">
                       <div className="w-2.5 h-2.5 bg-cyan-500 rounded-sm rotate-45 shadow-[0_0_10px_#06b6d4]"></div>
@@ -279,7 +434,7 @@ export const SocialMediaNode: React.FC<SocialMediaNodeProps> = ({
                            {acc.isConnected && (
                              <div className="flex items-center justify-between pt-6 border-t border-slate-100 dark:border-white/5">
                                 <div className="flex flex-col gap-1.5">
-                                   <span className="text-[9px] orbitron text-slate-400 font-black uppercase tracking-tighter">AI_AUTO_COMMENT</span>
+                                   <span className="text-[9px] orbitron text-slate-400 font-black uppercase tracking-widest">AI_AUTO_COMMENT</span>
                                    <span className={`text-[10px] orbitron font-black ${acc.autoEngageActive ? 'text-emerald-500 animate-pulse' : 'text-slate-500'}`}>
                                       {acc.autoEngageActive ? 'ENABLED' : 'DISABLED'}
                                    </span>
@@ -304,45 +459,85 @@ export const SocialMediaNode: React.FC<SocialMediaNodeProps> = ({
              </div>
           </div>
 
-          {/* MAIN VIEWPORT */}
-          <div className="flex-1 p-20 overflow-y-auto premium-scroll bg-slate-50/20 dark:bg-transparent">
-             
+          <div className="flex-1 p-16 md:p-20 overflow-y-auto premium-scroll bg-slate-50/20 dark:bg-transparent flex flex-col gap-16">
              {activeTab === 'ANALYTICS' && (
-               <div className="animate-in fade-in slide-in-from-bottom-12 duration-1000 space-y-16">
+               <div className="animate-in fade-in slide-in-from-bottom-12 duration-1000 flex flex-col gap-16">
                   <div className="flex justify-between items-end">
                     <div className="flex flex-col gap-3">
-                       <h3 className="text-5xl orbitron font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">Network_Growth_Intelligence</h3>
+                       <h3 className="text-5xl orbitron font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">Growth_Intelligence</h3>
                        <p className="text-[13px] font-mono text-cyan-600 font-bold uppercase tracking-[0.6em]">30_DAY_PERFORMANCE_METRICS</p>
                     </div>
                     <div className="flex gap-4">
                        <div className="px-8 py-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl flex flex-col items-center">
-                          <span className="text-[8px] orbitron text-slate-400 font-black">VELOCITY</span>
-                          <span className="text-lg font-mono text-emerald-500 font-black">+14.2%</span>
-                       </div>
-                       <div className="px-8 py-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl flex flex-col items-center">
-                          <span className="text-[8px] orbitron text-slate-400 font-black">RETENTION</span>
-                          <span className="text-lg font-mono text-cyan-500 font-black">98.4%</span>
+                          <span className="text-[8px] orbitron text-slate-400 font-black">AVG_VELOCITY</span>
+                          <span className="text-lg font-mono text-emerald-500 font-black">{analysisMetrics.combinedGrowth}</span>
                        </div>
                     </div>
                   </div>
 
-                  <div className="hud-glass p-16 rounded-[6rem] min-h-[650px] flex flex-col gap-12 bg-white dark:bg-black/50 border-2 border-slate-100 dark:border-cyan-500/10 shadow-2xl relative overflow-hidden">
-                     <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-5 pointer-events-none"></div>
-                     <div className="flex justify-between items-center relative z-10">
-                        <div className="flex gap-12">
-                           {accounts.filter(a => a.isConnected).map(acc => (
-                             <div key={acc.platform} className="flex items-center gap-4">
-                                <div className="w-3.5 h-3.5 rounded-full shadow-[0_0_10px_currentColor]" style={{ backgroundColor: acc.platform === 'INSTAGRAM' ? '#ec4899' : acc.platform === 'META' ? '#3b82f6' : acc.platform === 'TWITTER' ? '#0ea5e9' : '#a855f7', color: acc.platform === 'INSTAGRAM' ? '#ec4899' : acc.platform === 'META' ? '#3b82f6' : acc.platform === 'TWITTER' ? '#0ea5e9' : '#a855f7' }}></div>
-                                <span className="text-[12px] orbitron font-black text-slate-400 dark:text-slate-300 uppercase tracking-widest">{acc.platform}</span>
-                             </div>
-                           ))}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                     <div className="lg:col-span-2 hud-glass p-12 rounded-[5rem] min-h-[550px] flex flex-col gap-10 bg-white dark:bg-black/50 border-2 border-slate-100 dark:border-cyan-500/10 shadow-2xl relative overflow-hidden">
+                        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-5 pointer-events-none"></div>
+                        <div className="flex justify-between items-center relative z-10">
+                           <div className="flex gap-10">
+                              {connectedAccounts.map(acc => (
+                                <div key={acc.platform} className="flex items-center gap-4">
+                                   <div className="w-3.5 h-3.5 rounded-full shadow-[0_0_10px_currentColor]" style={{ backgroundColor: acc.platform === 'INSTAGRAM' ? '#ec4899' : acc.platform === 'META' ? '#3b82f6' : acc.platform === 'TWITTER' ? '#0ea5e9' : '#a855f7', color: acc.platform === 'INSTAGRAM' ? '#ec4899' : acc.platform === 'META' ? '#3b82f6' : acc.platform === 'TWITTER' ? '#0ea5e9' : '#a855f7' }}></div>
+                                   <span className="text-[11px] orbitron font-black text-slate-400 dark:text-slate-300 uppercase tracking-widest">{acc.platform}</span>
+                                </div>
+                              ))}
+                           </div>
+                           <div className="px-6 py-2 bg-cyan-600/10 border border-cyan-500/20 rounded-xl">
+                              <span className="text-[9px] orbitron text-cyan-500 font-black tracking-widest uppercase italic">Neural_Chart_Live</span>
+                           </div>
                         </div>
-                        <div className="px-8 py-2.5 bg-cyan-600/10 border border-cyan-500/30 rounded-2xl">
-                           <span className="text-[11px] orbitron text-cyan-500 font-black tracking-widest">UPLINK: 99.98% STABLE</span>
+                        <div className="flex-1 relative z-10">
+                           <FollowerGrowthChart accounts={accounts} />
                         </div>
                      </div>
-                     <div className="flex-1 relative z-10">
-                        <FollowerGrowthChart accounts={accounts} />
+
+                     <div className="flex flex-col gap-8">
+                        {/* STRATEGIC ANALYSIS PANEL */}
+                        <div className="hud-glass p-10 rounded-[4rem] bg-white dark:bg-black/40 border-2 border-cyan-500/10 shadow-xl flex flex-col gap-10">
+                           <div className="flex flex-col gap-2 border-b border-slate-100 dark:border-white/5 pb-6">
+                              <span className="text-[11px] orbitron font-black text-cyan-600 uppercase tracking-widest italic">Strategic_Dost_Analysis</span>
+                              <h4 className="text-xl orbitron font-black text-slate-900 dark:text-white uppercase">Meta_&_Insta_Sync</h4>
+                           </div>
+                           
+                           <div className="space-y-8">
+                              <div className="flex flex-col gap-4 p-6 rounded-3xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 group hover:border-pink-500/30 transition-all">
+                                 <div className="flex justify-between items-center">
+                                    <div className="flex items-center gap-3">
+                                       <PlatformIcon platform="INSTAGRAM" className="w-4 h-4 text-pink-500" />
+                                       <span className="text-[10px] orbitron font-black text-slate-700 dark:text-slate-300">INSTAGRAM_SURGE</span>
+                                    </div>
+                                    <span className="text-xl font-mono text-emerald-500 font-black">{analysisMetrics.igNew}</span>
+                                 </div>
+                                 <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-900 rounded-full overflow-hidden">
+                                    <div className="h-full bg-pink-500 w-[75%] shadow-[0_0_10px_#ec4899]"></div>
+                                 </div>
+                              </div>
+
+                              <div className="flex flex-col gap-4 p-6 rounded-3xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 group hover:border-blue-500/30 transition-all">
+                                 <div className="flex justify-between items-center">
+                                    <div className="flex items-center gap-3">
+                                       <PlatformIcon platform="META" className="w-4 h-4 text-blue-500" />
+                                       <span className="text-[10px] orbitron font-black text-slate-700 dark:text-slate-300">META_TRAJECTORY</span>
+                                    </div>
+                                    <span className="text-xl font-mono text-emerald-500 font-black">{analysisMetrics.metaNew}</span>
+                                 </div>
+                                 <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-900 rounded-full overflow-hidden">
+                                    <div className="h-full bg-blue-500 w-[60%] shadow-[0_0_10px_#3b82f6]"></div>
+                                 </div>
+                              </div>
+                           </div>
+
+                           <div className="p-8 bg-cyan-600/5 rounded-[2.5rem] border border-cyan-500/10">
+                              <p className="text-[11px] font-mono text-slate-600 dark:text-cyan-200 italic leading-relaxed">
+                                "Sir, Instagram and Meta platforms show a unified growth vector. Combined followers now exceed {formatVal(getNumeric(analysisMetrics.igTotal) + getNumeric(analysisMetrics.metaTotal))}. Strategic target achieved."
+                              </p>
+                           </div>
+                        </div>
                      </div>
                   </div>
                </div>
@@ -350,7 +545,7 @@ export const SocialMediaNode: React.FC<SocialMediaNodeProps> = ({
 
              {activeTab === 'NEXUS' && (
                <div className="animate-in fade-in zoom-in duration-1000 space-y-16">
-                  <h3 className="text-5xl orbitron font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">Account_Synchronization_Core</h3>
+                  <h3 className="text-5xl orbitron font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">Synchronization_Core</h3>
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-12 pb-32">
                      {accounts.map(acc => (
                        <div key={acc.platform} className={`hud-glass p-12 rounded-[5rem] border-2 transition-all duration-700 flex flex-col gap-12 relative group overflow-hidden ${acc.isConnected ? 'border-cyan-500/20 bg-white dark:bg-cyan-950/10' : 'opacity-20 grayscale scale-95 shadow-none'}`}>
@@ -392,7 +587,7 @@ export const SocialMediaNode: React.FC<SocialMediaNodeProps> = ({
                                <button onClick={() => onApplyShop(acc.platform)} className="px-12 py-6 bg-cyan-600 text-white orbitron font-black text-[10px] rounded-[2.5rem] shadow-[0_20px_50px_rgba(6,182,212,0.3)] hover:scale-105 active:scale-95 transition-all uppercase tracking-[0.3em] italic">Deploy_Dost_Shop</button>
                             </div>
                           ) : (
-                            <button onClick={() => onConnect(acc.platform)} className="w-full py-8 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-500 orbitron font-black text-xs rounded-[3rem] hover:bg-cyan-600 hover:text-white hover:border-cyan-600 transition-all uppercase tracking-[0.4em] italic shadow-inner">Initialize_Platform_Sync</button>
+                            <button onClick={() => onConnect(acc.platform)} className="w-full py-8 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-500 orbitron font-black text-xs rounded-[3rem] hover:bg-cyan-600 hover:text-white hover:border-cyan-600 transition-all uppercase tracking-[0.4em] italic shadow-inner">Initialize_Sync</button>
                           )}
                        </div>
                      ))}
@@ -448,7 +643,7 @@ export const SocialMediaNode: React.FC<SocialMediaNodeProps> = ({
                            </div>
                            
                            <div className="grid grid-cols-2 gap-8">
-                              <button className="py-8 bg-cyan-600 text-white orbitron font-black text-xs rounded-[3rem] hover:bg-cyan-700 transition-all shadow-2xl uppercase tracking-[0.3em] italic">Deploy_New_Agent</button>
+                              <button className="py-8 bg-cyan-600 text-white orbitron font-black text-xs rounded-[3rem] hover:bg-cyan-700 transition-all shadow-2xl uppercase tracking-[0.3em] italic">Deploy_Agent</button>
                               <button className="py-8 border-4 border-cyan-500/20 text-cyan-600 dark:text-cyan-400 orbitron font-black text-xs rounded-[3rem] hover:bg-cyan-500/5 transition-all uppercase tracking-[0.3em] italic">Network_Sweep</button>
                            </div>
 
@@ -468,11 +663,133 @@ export const SocialMediaNode: React.FC<SocialMediaNodeProps> = ({
              )}
 
              {activeTab === 'STRATEGY' && (
-               <div className="h-full flex flex-col items-center justify-center opacity-30 italic scale-90 select-none pointer-events-none grayscale">
-                  <div className="w-64 h-64 border-8 border-dashed border-cyan-500/30 rounded-full animate-[spin_30s_linear_infinite] flex items-center justify-center mb-16">
-                     <svg viewBox="0 0 24 24" className="w-32 h-32 text-cyan-600" fill="none" stroke="currentColor" strokeWidth="0.5"><path d="M12 21a9 9 0 1 0-9-9 9 9 0 0 0 9 9z"/><path d="M12 8v4l3 3"/></svg>
+               <div className="animate-in fade-in slide-in-from-bottom-12 duration-1000 flex flex-col gap-12">
+                  <div className="flex flex-col gap-6">
+                    <h3 className="text-5xl orbitron font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">Neural_Brand_Engine</h3>
+                    <div className="flex gap-4">
+                        <input 
+                          value={brandEssence}
+                          onChange={(e) => setBrandEssence(e.target.value)}
+                          placeholder="ENTER_BRAND_ESSENCE_OR_PRODUCT_CONCEPT..."
+                          className="flex-1 bg-white dark:bg-black/60 border-2 border-slate-200 dark:border-cyan-500/20 rounded-[2rem] px-8 py-5 text-slate-900 dark:text-white font-mono outline-none focus:border-cyan-500/50 transition-all"
+                        />
+                        <button 
+                          onClick={handleGenerateStrategy}
+                          disabled={isGeneratingStrategy || !brandEssence.trim()}
+                          className="px-10 bg-cyan-600 text-white orbitron font-black text-xs rounded-[2rem] hover:bg-cyan-700 transition-all shadow-xl disabled:opacity-50 flex items-center gap-3 uppercase tracking-widest"
+                        >
+                          {isGeneratingStrategy ? (
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          ) : (
+                            <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="3"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                          )}
+                          Synthesize_Strategy
+                        </button>
+                    </div>
                   </div>
-                  <span className="text-4xl orbitron font-black tracking-[1em] uppercase text-slate-500">Neural_Engine_Ready</span>
+
+                  {!strategy && !isGeneratingStrategy ? (
+                    <div className="flex-1 flex flex-col items-center justify-center py-20 opacity-30 select-none pointer-events-none grayscale">
+                        <div className="w-48 h-48 border-4 border-dashed border-cyan-500/20 rounded-full animate-[spin_30s_linear_infinite] flex items-center justify-center mb-8">
+                          <svg viewBox="0 0 24 24" className="w-24 h-24 text-cyan-600" fill="none" stroke="currentColor" strokeWidth="1"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/></svg>
+                        </div>
+                        <span className="text-xl orbitron font-black tracking-[0.5em] uppercase text-slate-500">Neural_Engine_Idle</span>
+                    </div>
+                  ) : isGeneratingStrategy ? (
+                    <div className="flex-1 flex flex-col items-center justify-center py-20 gap-8">
+                       <div className="relative w-32 h-32">
+                          <div className="absolute inset-0 border-4 border-cyan-500/10 rounded-full"></div>
+                          <div className="absolute inset-0 border-4 border-t-cyan-500 rounded-full animate-spin"></div>
+                       </div>
+                       <div className="flex flex-col items-center gap-2">
+                          <span className="text-lg orbitron font-black text-cyan-500 uppercase tracking-widest animate-pulse">Mapping_Market_Vectors...</span>
+                          <span className="text-[10px] font-mono text-slate-400 uppercase">Consulting Distributed Dost Nodes</span>
+                       </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-12 pb-32 animate-in fade-in zoom-in duration-700">
+                        {/* SLOGANS */}
+                        <div className="hud-glass p-12 rounded-[5rem] border-2 border-cyan-500/10 bg-white dark:bg-black/40 flex flex-col gap-8 shadow-2xl relative overflow-hidden">
+                           <div className="flex items-center gap-4 border-b border-slate-100 dark:border-white/5 pb-6">
+                              <div className="w-10 h-10 bg-cyan-600/10 rounded-xl flex items-center justify-center text-cyan-600">
+                                <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                              </div>
+                              <h4 className="text-2xl orbitron font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">Strategic_Slogans</h4>
+                           </div>
+                           <div className="flex flex-col gap-6">
+                              {strategy.slogans.map((s, i) => (
+                                <div key={i} className="p-6 rounded-[2rem] bg-slate-50 dark:bg-cyan-500/5 border border-slate-100 dark:border-cyan-500/10 hover:border-cyan-500/40 transition-all group">
+                                   <p className="text-xl font-mono text-slate-700 dark:text-cyan-100 italic leading-relaxed">"{s}"</p>
+                                </div>
+                              ))}
+                           </div>
+                        </div>
+
+                        {/* BRAND VOICE */}
+                        <div className="hud-glass p-12 rounded-[5rem] border-2 border-indigo-500/10 bg-white dark:bg-black/40 flex flex-col gap-8 shadow-2xl relative overflow-hidden">
+                           <div className="flex items-center gap-4 border-b border-slate-100 dark:border-white/5 pb-6">
+                              <div className="w-10 h-10 bg-indigo-600/10 rounded-xl flex items-center justify-center text-indigo-600">
+                                <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                              </div>
+                              <h4 className="text-2xl orbitron font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">Neural_Voice_Identity</h4>
+                           </div>
+                           <div className="space-y-8">
+                              <div className="flex flex-wrap gap-3">
+                                 {strategy.brandVoice.tone.map((t, i) => (
+                                   <span key={i} className="px-5 py-2 bg-indigo-500/10 border border-indigo-500/30 text-[10px] orbitron font-black text-indigo-500 rounded-full uppercase tracking-widest">{t}</span>
+                                 ))}
+                              </div>
+                              <p className="text-sm font-mono text-slate-600 dark:text-slate-300 leading-relaxed italic border-l-4 border-indigo-500/20 pl-6">{strategy.brandVoice.description}</p>
+                              <div className="space-y-4">
+                                 <span className="text-[10px] orbitron text-slate-400 font-black uppercase tracking-widest">Operational_Guidelines:</span>
+                                 <div className="grid grid-cols-1 gap-3">
+                                    {strategy.brandVoice.guidelines.map((g, i) => (
+                                      <div key={i} className="flex items-center gap-3 text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                                         <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full"></div>
+                                         {g}
+                                      </div>
+                                    ))}
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+
+                        {/* AUDIENCE PROFILES */}
+                        <div className="xl:col-span-2 hud-glass p-12 rounded-[5rem] border-2 border-emerald-500/10 bg-white dark:bg-black/40 flex flex-col gap-8 shadow-2xl relative overflow-hidden">
+                           <div className="flex items-center gap-4 border-b border-slate-100 dark:border-white/5 pb-6">
+                              <div className="w-10 h-10 bg-emerald-600/10 rounded-xl flex items-center justify-center text-emerald-600">
+                                <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                              </div>
+                              <h4 className="text-2xl orbitron font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">Audience_Demographic_Matrix</h4>
+                           </div>
+                           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                              {strategy.audienceProfiles.map((p, i) => (
+                                <div key={i} className="p-8 rounded-[3rem] bg-emerald-500/5 border border-emerald-500/10 hover:border-emerald-500/30 transition-all flex flex-col gap-6 group">
+                                   <div className="flex flex-col gap-1">
+                                      <span className="text-[10px] orbitron text-emerald-600 font-black uppercase tracking-widest italic">Archetype_0{i+1}</span>
+                                      <h5 className="text-xl orbitron font-black text-slate-900 dark:text-white uppercase tracking-tighter">{p.name}</h5>
+                                   </div>
+                                   <div className="space-y-4">
+                                      <div className="flex flex-col gap-1">
+                                         <span className="text-[8px] orbitron text-slate-400 uppercase tracking-widest">Demographics</span>
+                                         <p className="text-[11px] font-mono text-slate-600 dark:text-slate-300">{p.demographics}</p>
+                                      </div>
+                                      <div className="flex flex-col gap-1">
+                                         <span className="text-[8px] orbitron text-slate-400 uppercase tracking-widest">Psychographics</span>
+                                         <p className="text-[11px] font-mono text-slate-600 dark:text-slate-300 italic">"{p.psychographics}"</p>
+                                      </div>
+                                   </div>
+                                   <div className="flex flex-wrap gap-2 pt-4 border-t border-emerald-500/10">
+                                      {p.interests.map((interest, idx) => (
+                                        <span key={idx} className="px-3 py-1 bg-emerald-500/10 text-[7px] orbitron font-black text-emerald-600 rounded uppercase">{interest}</span>
+                                      ))}
+                                   </div>
+                                </div>
+                              ))}
+                           </div>
+                        </div>
+                    </div>
+                  )}
                </div>
              )}
           </div>
@@ -481,3 +798,16 @@ export const SocialMediaNode: React.FC<SocialMediaNodeProps> = ({
     </div>
   );
 };
+
+// Helper function for metric calculation
+function getNumeric(val: string) {
+  if (!val) return 0;
+  return parseFloat(val.replace(/[^0-9.]/g, '')) * (val.includes('M') ? 1000000 : val.includes('K') ? 1000 : 1);
+}
+
+// Helper for formatting
+function formatVal(v: number) {
+  if (v >= 1000000) return (v / 1000000).toFixed(2) + 'M';
+  if (v >= 1000) return (v / 1000).toFixed(1) + 'K';
+  return Math.floor(v).toString();
+}

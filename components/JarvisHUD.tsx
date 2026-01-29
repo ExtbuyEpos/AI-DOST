@@ -44,7 +44,7 @@ export const JarvisHUD: React.FC<JarvisHUDProps> = ({
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none">
       {/* PROFESSIONAL OVERLAYS */}
-      <div className={`absolute top-0 left-0 w-full h-40 ${isLightMode ? 'bg-gradient-to-b from-white/70' : 'bg-gradient-to-b from-black/90'} to-transparent`}></div>
+      <div className={`absolute top-0 left-0 w-full h-40 ${isLightMode ? 'bg-gradient-to-b from-white/70' : 'bg-gradient-to-b from-black/90'} to-transparent transition-all duration-1000`}></div>
       
       {/* TOP COMMAND CLUSTER */}
       <div className="absolute top-10 md:top-14 left-10 md:left-14 flex items-center gap-8 md:gap-12 pointer-events-auto">
@@ -59,7 +59,7 @@ export const JarvisHUD: React.FC<JarvisHUDProps> = ({
         <div className="flex flex-col gap-2">
           <span className="text-[9px] md:text-[12px] orbitron font-black text-slate-500 tracking-[0.5em] uppercase">AI_DOST_CORE</span>
           <div className="flex items-center gap-4">
-            <div className={`w-2.5 h-2.5 rounded-full animate-pulse shadow-[0_0_15px_currentColor]`} style={{ backgroundColor: themeColor, color: themeColor }}></div>
+            <div className={`w-2.5 h-2.5 rounded-full animate-pulse shadow-[0_0_15px_currentColor] transition-all`} style={{ backgroundColor: themeColor, color: themeColor }}></div>
             <span className={`text-sm md:text-lg font-mono font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{telemetry.sync.toFixed(3)}%_DOST_UPLINK</span>
           </div>
         </div>
@@ -86,12 +86,13 @@ export const JarvisHUD: React.FC<JarvisHUDProps> = ({
         </button>
         <button 
           onClick={onToggleLightMode}
-          className={`w-12 h-12 rounded-xl border flex items-center justify-center transition-all shadow-xl ${isLightMode ? 'border-slate-900/10 bg-slate-100 text-slate-900' : 'border-white/10 bg-white/5 text-white'} hover:border-cyan-500/50`}
+          className={`px-6 py-3 rounded-xl border flex items-center justify-center transition-all shadow-xl gap-3 ${isLightMode ? 'border-slate-900/10 bg-slate-100 text-slate-900' : 'border-white/10 bg-white/5 text-white'} hover:border-cyan-500/50 group`}
         >
+          <span className="text-[9px] orbitron font-black hidden md:block group-hover:text-cyan-500">{isLightMode ? 'DARK_MOOD' : 'LIGHT_MOOD'}</span>
           {isLightMode ? (
-            <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           ) : (
-            <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
           )}
         </button>
       </div>
@@ -112,7 +113,7 @@ export const JarvisHUD: React.FC<JarvisHUDProps> = ({
       </div>
 
       {/* DIEGETIC PROFESSIONAL DATA MESH */}
-      <div className={`absolute inset-0 opacity-[0.04] pointer-events-none bg-[linear-gradient(rgba(6,182,212,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.1)_1px,transparent_1px)] bg-[size:80px_80px] ${isLightMode ? 'grayscale invert' : ''}`}></div>
+      <div className={`absolute inset-0 opacity-[0.04] pointer-events-none bg-[linear-gradient(rgba(6,182,212,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.1)_1px,transparent_1px)] bg-[size:80px_80px] transition-all duration-1000 ${isLightMode ? 'grayscale invert opacity-[0.02]' : ''}`}></div>
     </div>
   );
 };
