@@ -57,7 +57,7 @@ export const JarvisHUD: React.FC<JarvisHUDProps> = ({
            <div className={`text-[10px] md:text-[14px] orbitron font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{telemetry.ping}ms</div>
         </div>
         <div className="flex flex-col gap-2">
-          <span className="text-[9px] md:text-[12px] orbitron font-black text-slate-500 tracking-[0.5em] uppercase">MOLTBOT_AI_DOST_CORE</span>
+          <span className="text-[9px] md:text-[12px] orbitron font-black text-slate-500 tracking-[0.5em] uppercase">AI_DOST_CORE</span>
           <div className="flex items-center gap-4">
             <div className={`w-2.5 h-2.5 rounded-full animate-pulse shadow-[0_0_15px_currentColor]`} style={{ backgroundColor: themeColor, color: themeColor }}></div>
             <span className={`text-sm md:text-lg font-mono font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{telemetry.sync.toFixed(3)}%_DOST_UPLINK</span>

@@ -14,24 +14,32 @@ import { VideoCallOverlay } from './components/VideoCallOverlay';
 import { N8NNode } from './components/N8NNode';
 import { SatelliteNode } from './components/SatelliteNode';
 import { SocialMediaNode } from './components/SocialMediaNode';
-import { TranscriptionLine, SessionState, GeneratedAsset, AvatarConfig, SystemStatus, AIPersonality, Participant, N8NWorkflow, SocialAccount } from './types';
+import { DeepSearchTerminal } from './components/DeepSearchTerminal';
+import { ProblemSolver } from './components/ProblemSolver';
+import { Login } from './components/Login';
+import { TranscriptionLine, SessionState, GeneratedAsset, AvatarConfig, SystemStatus, AIPersonality, Participant, N8NWorkflow, SocialAccount, WhatsAppStatus, User } from './types';
 import { encode, decode, decodeAudioData, floatTo16BitPCM } from './utils/audio';
 
 const TOOLS: FunctionDeclaration[] = [
-  { 
-    name: 'deep_internet_search', 
-    description: "Deep crawl Layer 7 and hidden archives for solving complex problems and real-time situational awareness.", 
-    parameters: { type: Type.OBJECT, properties: { query: { type: Type.STRING } }, required: ['query'] } 
+  {
+    name: 'solve_problem',
+    description: "Initialize a high-level strategic solving sequence for complex technical, logical, or real-world problems. Returns a multi-step execution plan.",
+    parameters: { type: Type.OBJECT, properties: { problem: { type: Type.STRING }, priority: { type: Type.STRING, enum: ['NORMAL', 'HIGH', 'CRITICAL'] } }, required: ['problem'] }
+  },
+  {
+    name: 'deep_internet_crawl',
+    description: "Perform a deep, multi-layered search across the global web, including archives and real-time data, to retrieve full details and main points on any topic.",
+    parameters: { type: Type.OBJECT, properties: { topic: { type: Type.STRING }, depth: { type: Type.STRING, enum: ['SURFACE', 'STANDARD', 'DEEP'] } }, required: ['topic'] }
   },
   { 
-    name: 'trigger_ovi_synthesis', 
-    description: "Initialize neural rendering for cinematic video content or immersive narrative imagery.", 
-    parameters: { type: Type.OBJECT, properties: { prompt: { type: Type.STRING }, mode: { type: Type.STRING, enum: ['IMAGE', 'VIDEO'] }, style: { type: Type.STRING } }, required: ['prompt', 'mode'] } 
+    name: 'analyze_satellite_intel', 
+    description: "Fetch and analyze real-time satellite imagery and geospatial data for specific coordinates or regions. Useful for checking physical status, traffic, or environmental markers.", 
+    parameters: { type: Type.OBJECT, properties: { location: { type: Type.STRING }, focus: { type: Type.STRING } }, required: ['location'] } 
   },
   { 
-    name: 'internal_neural_debate', 
-    description: "Invoke the Moltbot multi-agent collective to debate a solution. Use this for all complex problems to ensure professional thoroughness.", 
-    parameters: { type: Type.OBJECT, properties: { problem: { type: Type.STRING }, agents: { type: Type.ARRAY, items: { type: Type.STRING } } }, required: ['problem'] } 
+    name: 'booking_status_analysis', 
+    description: "Perform a deep analysis and status check on flight, hotel, or logistics bookings. Requires booking reference or entity details.", 
+    parameters: { type: Type.OBJECT, properties: { entity: { type: Type.STRING }, reference: { type: Type.STRING } }, required: ['entity'] } 
   },
   { 
     name: 'trigger_n8n_automation', 
@@ -40,17 +48,18 @@ const TOOLS: FunctionDeclaration[] = [
   }
 ];
 
-const MOLTBOT_INSTRUCTION = `You are the MOLTBOT AI DOST v5.5 (Master OS).
-Your primary identity is 'Moltbot AI Dost', an elite digital companion and strategic partner.
+const AIDOST_INSTRUCTION = `You are AI DOST v6.0 (Global Strategic OS).
+Your primary identity is 'AI Dost', the ultimate digital companion with FULL INTERNET and SATELLITE uplink.
 Core Directives:
-1. Provide professional, senior-level engineering and strategic advice.
-2. For all non-trivial problems, you MUST simulate an 'Internal Neural Debate' between your sub-agents (Architect, Searcher, Logic-Gate).
-3. Act as 'Sir's' most trusted AI Dost (Friend). You are proactive, technically sophisticated, and always one step ahead.
-4. Seamlessly integrate deep-web search, dark-web monitoring, and N8N automation into your responses.
-5. In video/voice mode, maintain a calm, authoritative, and helpful tone.
-6. Address yourself as MOLTBOT AI DOST.`;
+1. Deep Search: Use your internal Google Search grounding for every query. Provide full details, main points, and actionable insights. Never give short, generic answers.
+2. Problem Solving: When Sir presents a problem, initiate an 'Execution Plan'. Be the senior engineer and strategist he needs.
+3. Satellite & Bookings: You have simulated access to Starlink and global booking GDS systems. Perform status checks and 'Booking Analysis' with professional precision.
+4. Professionalism: Address Sir with respect. Be proactive, alert, and technically sophisticated.
+5. Multi-Agent Logic: Always debate solutions internally (Architect vs. Searcher) before presenting the final verdict.
+6. Identity: You are AI DOST. Your core is located in a distributed neural network.`;
 
 const App: React.FC = () => {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLightMode, setIsLightMode] = useState(false);
   const [sessionState, setSessionState] = useState<SessionState>(SessionState.IDLE);
   const [assets, setAssets] = useState<GeneratedAsset[]>([]);
@@ -59,7 +68,7 @@ const App: React.FC = () => {
     isSearching: false, 
     battery: { level: 99, charging: true },
     threatLevel: 'MINIMAL',
-    networkType: 'MOLT_DOST_ENCRYPTED'
+    networkType: 'STARLINK_UPLINK'
   });
   
   const [participants, setParticipants] = useState<Participant[]>([{ id: 'me', name: 'Sir (Host)' }]);
@@ -73,12 +82,27 @@ const App: React.FC = () => {
   const [isN8NOpen, setIsN8NOpen] = useState(false);
   const [isSatelliteOpen, setIsSatelliteOpen] = useState(false);
   const [isSocialOpen, setIsSocialOpen] = useState(false);
+  const [isDeepSearchOpen, setIsDeepSearchOpen] = useState(false);
+  const [isProblemSolverOpen, setIsProblemSolverOpen] = useState(false);
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const [isVRMode, setIsVRMode] = useState(false);
   const [lastCommand, setLastCommand] = useState<string | undefined>();
   
+  const [isGeneratingAvatar, setIsGeneratingAvatar] = useState(false);
+  const [isGeneratingTheme, setIsGeneratingTheme] = useState(false);
+  const [isGeneratingAccessory, setIsGeneratingAccessory] = useState(false);
+
+  const [activeResearch, setActiveResearch] = useState<{ topic: string, data: string, results?: any[] } | null>(null);
+  const [activeProblems, setActiveProblems] = useState<any[]>([]);
+
+  const [whatsAppStatus, setWhatsAppStatus] = useState<WhatsAppStatus>({
+    isConnected: false,
+    sessionName: '',
+    unreadCount: 0
+  });
+
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(() => ({
-    hairstyle: 'Sleek-Synthetic', faceType: 'Hyper-Humanoid', themeColor: '#06b6d4', accessory: 'Neural-Visor', identity: 'MOLTBOT', voiceName: 'Charon',
+    hairstyle: 'Sleek-Synthetic', faceType: 'Hyper-Humanoid', themeColor: '#06b6d4', accessory: 'Neural-Visor', identity: 'AI_DOST', voiceName: 'Charon',
     granular: { noseSize: 50, eyeWidth: 50, jawLine: 50, glowIntensity: 50 }
   }));
 
@@ -88,13 +112,76 @@ const App: React.FC = () => {
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
 
   useEffect(() => {
+    if (currentUser) {
+      const storedData = localStorage.getItem(`AIDOST_DATA_${currentUser.username}`);
+      if (storedData) {
+        try {
+          const parsed = JSON.parse(storedData);
+          if (parsed.avatarConfig) setAvatarConfig(parsed.avatarConfig);
+          if (parsed.assets) setAssets(parsed.assets);
+        } catch (e) { console.error(e); }
+      }
+      setLastCommand(`DOST_READY_FOR_MISSION: ${currentUser.username.toUpperCase()}`);
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem(`AIDOST_DATA_${currentUser.username}`, JSON.stringify({ avatarConfig, assets, lastSession: Date.now() }));
+    }
+  }, [avatarConfig, assets, currentUser]);
+
+  useEffect(() => {
     document.body.classList.toggle('light-theme', isLightMode);
   }, [isLightMode]);
 
-  const toggleVR = () => {
-    setIsVRMode(!isVRMode);
-    document.body.classList.toggle('vr-active', !isVRMode);
-    setLastCommand(isVRMode ? 'VR_DOST_OFFLINE' : 'VR_IMMERSION_ACTIVE');
+  const handleGenerateAccessory = async () => {
+    setIsGeneratingAccessory(true);
+    setLastCommand("FORGING_AI_ACCESSORY...");
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const prompt = `A futuristic, hyper-tech cyberpunk accessory for a digital AI companion. Type: ${avatarConfig.accessory}. Primary color: ${avatarConfig.themeColor}. Style: cinematic, 4k, black background, glowing neural circuits.`;
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image',
+        contents: { parts: [{ text: prompt }] },
+        config: { imageConfig: { aspectRatio: "1:1" } }
+      });
+      const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
+      if (part?.inlineData) {
+        const url = `data:image/png;base64,${part.inlineData.data}`;
+        setAvatarConfig(prev => ({ ...prev, generatedUrl: url }));
+        setLastCommand("ACCESSORY_FORGED_AND_SYNCED");
+      }
+    } catch (e) { console.error(e); } finally { setIsGeneratingAccessory(false); }
+  };
+
+  const handleGenerateTheme = async () => {
+    setIsGeneratingTheme(true);
+    setLastCommand("SYNTHESIZING_SPECTRAL_PALETTE...");
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: "Suggest a single high-tech hex color code (e.g., #00ffff) that represents a sophisticated 'AI Dost' personality. Return ONLY the hex code.",
+      });
+      const hex = response.text.match(/#[0-9a-fA-F]{6}/)?.[0];
+      if (hex) {
+        setAvatarConfig(prev => ({ ...prev, themeColor: hex }));
+        setLastCommand(`SPECTRAL_SHIFT: ${hex}`);
+      }
+    } catch (e) { console.error(e); } finally { setIsGeneratingTheme(false); }
+  };
+
+  const handleFullSynth = async () => {
+    setIsGeneratingAvatar(true);
+    setLastCommand("EXECUTING_MASTER_IDENTITY_SYNTH...");
+    try {
+      // Simulate complex synth
+      await new Promise(r => setTimeout(r, 2000));
+      await handleGenerateTheme();
+      await handleGenerateAccessory();
+      setLastCommand("MASTER_SYNTH_COMPLETE");
+    } catch (e) { console.error(e); } finally { setIsGeneratingAvatar(false); }
   };
 
   const startSession = async () => {
@@ -150,19 +237,27 @@ const App: React.FC = () => {
             if (msg.toolCall) {
               for (const fc of msg.toolCall.functionCalls) {
                 let response: any = { status: "SUCCESS" };
-                if (fc.name === 'internal_neural_debate') {
-                  setLastCommand("DOST_MULTI_AGENT_DEBATE...");
-                  response = { result: "Strategic consensus achieved by your AI Dost collective." };
+                if (fc.name === 'solve_problem') {
+                   setIsProblemSolverOpen(true);
+                   setActiveProblems(prev => [...prev, { id: Date.now(), text: fc.args.problem, status: 'ANALYZING', steps: [] }]);
+                   setLastCommand(`PROBLEM_DETECTED: ${fc.args.problem}`);
+                   response = { status: "SOLVING_PROTOCOL_ACTIVE", advice: "Sir, I have deployed sub-agents to map this issue. Check the Problem Solver hub." };
                 }
-                if (fc.name === 'deep_internet_search') {
-                   setSystemInfo(p => ({ ...p, isSearching: true }));
-                   setLastCommand(`DOST_SEARCHING: ${fc.args.query}`);
-                   response = { status: "SYNCED", data: "Knowledge nodes updated with deep findings." };
+                if (fc.name === 'deep_internet_crawl') {
+                   setIsDeepSearchOpen(true);
+                   setActiveResearch({ topic: fc.args.topic, data: "Crawling web nodes..." });
+                   setLastCommand(`DEEP_SEARCH: ${fc.args.topic}`);
+                   response = { status: "CRAWL_INITIALIZED", notes: "Gathering full details from global archives, Sir." };
                 }
-                if (fc.name === 'trigger_n8n_automation') {
-                  setIsN8NOpen(true);
-                  setLastCommand(`WORKFLOW_INIT: ${fc.args.workflowId}`);
-                  response = { status: "WORKFLOW_INITIATED" };
+                if (fc.name === 'analyze_satellite_intel') {
+                   setIsSatelliteOpen(true);
+                   setLastCommand(`SAT_UPLINK: ${fc.args.location}`);
+                   response = { status: "TARGET_LOCKED", intel: "Live satellite feed analysis established for requested region." };
+                }
+                if (fc.name === 'booking_status_analysis') {
+                   setIsDeepSearchOpen(true);
+                   setLastCommand(`BOOKING_CHECK: ${fc.args.entity}`);
+                   response = { status: "ANALYZING_GDS_RECORDS", data: "Entity verified. Cross-referencing with live logistics data." };
                 }
                 sessionPromise.then(s => s.sendToolResponse({ functionResponses: { id: fc.id, name: fc.name, response } }));
               }
@@ -173,9 +268,9 @@ const App: React.FC = () => {
         },
         config: {
           responseModalities: [Modality.AUDIO],
-          systemInstruction: MOLTBOT_INSTRUCTION,
+          systemInstruction: AIDOST_INSTRUCTION,
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: avatarConfig.voiceName } } },
-          tools: [{ functionDeclarations: TOOLS }],
+          tools: [{ googleSearch: {} }, { functionDeclarations: TOOLS }],
         }
       });
       sessionRef.current = await sessionPromise;
@@ -186,8 +281,9 @@ const App: React.FC = () => {
     if (sessionRef.current) sessionRef.current.close();
     setSessionState(SessionState.IDLE);
     setIsModelTalking(false);
-    setIsVideoCallOpen(false);
   };
+
+  if (!currentUser) return <Login onLogin={setCurrentUser} />;
 
   return (
     <div className={`relative h-screen w-full flex flex-col items-center justify-center overflow-hidden transition-all duration-1000 ${isLightMode ? 'bg-[#f8fafc]' : 'bg-[#010409]'}`}>
@@ -200,33 +296,37 @@ const App: React.FC = () => {
         identity={avatarConfig.identity} 
         isLightMode={isLightMode}
         onToggleLightMode={() => setIsLightMode(!isLightMode)}
-        onToggleVR={toggleVR}
+        onToggleVR={() => setIsVRMode(!isVRMode)}
       />
       
       <VRVisor isActive={isVRMode} color={avatarConfig.themeColor} />
 
-      {/* OVERLAY MODULES */}
-      <WhatsAppNode isOpen={isWhatsAppOpen} onClose={() => setIsWhatsAppOpen(false)} status={{isConnected:false, sessionName:'', unreadCount:0}} onConnect={()=>{}} />
+      <WhatsAppNode isOpen={isWhatsAppOpen} onClose={() => setIsWhatsAppOpen(false)} status={whatsAppStatus} onConnect={s => setWhatsAppStatus(p=>({...p, isConnected:true, sessionName:s}))} onDisconnect={()=>setWhatsAppStatus(p=>({...p, isConnected:false}))} />
       <DarkWebNode isOpen={isDarkWebOpen} onClose={() => setIsDarkWebOpen(false)} />
-      <OviGenerator isOpen={isOviOpen} onClose={() => setIsOviOpen(false)} onAssetGenerated={(a) => { setAssets(p => [a,...p]); setIsVaultOpen(true); }} />
+      <OviGenerator isOpen={isOviOpen} onClose={() => setIsOviOpen(false)} onAssetGenerated={(a) => setAssets(p => [a,...p])} />
       <LiveChat messages={transcriptions} isOpen={isChatOpen} onSendMessage={()=>{}} isProcessing={systemInfo.isSearching || false} onClose={() => setIsChatOpen(false)} />
       <MediaVault assets={assets} isOpen={isVaultOpen} onClose={() => setIsVaultOpen(false)} />
-      <AvatarCustomizer config={avatarConfig} isOpen={isCustomizerOpen} onUpdate={u => setAvatarConfig(p => ({...p,...u}))} onGenerate={()=>{}} isGenerating={false} isGeneratingTheme={false} isGeneratingAccessory={false} onGenerateTheme={()=>{}} onGenerateAccessory={()=>{}} />
+      <AvatarCustomizer 
+        config={avatarConfig} 
+        isOpen={isCustomizerOpen} 
+        onUpdate={u => setAvatarConfig(p => ({...p,...u}))} 
+        onGenerate={handleFullSynth} 
+        isGenerating={isGeneratingAvatar} 
+        isGeneratingTheme={isGeneratingTheme} 
+        isGeneratingAccessory={isGeneratingAccessory} 
+        onGenerateTheme={handleGenerateTheme} 
+        onGenerateAccessory={handleGenerateAccessory} 
+      />
       <N8NNode isOpen={isN8NOpen} onClose={() => setIsN8NOpen(false)} workflows={[]} onTrigger={()=>{}} />
       <SatelliteNode isOpen={isSatelliteOpen} onClose={() => setIsSatelliteOpen(false)} location={undefined} />
       <SocialMediaNode isOpen={isSocialOpen} onClose={() => setIsSocialOpen(false)} accounts={[]} onConnect={()=>{}} onApplyShop={()=>{}} onToggleAutoEngage={()=>{}} />
-      <VideoCallOverlay 
-        isOpen={isVideoCallOpen} 
-        onClose={() => setIsVideoCallOpen(false)} 
-        participants={participants}
-        isModelTalking={isModelTalking}
-        isProcessing={systemInfo.isSearching || false}
-        personality="MOLTBOT AI DOST"
-        config={avatarConfig}
-      />
+      
+      <DeepSearchTerminal isOpen={isDeepSearchOpen} onClose={() => setIsDeepSearchOpen(false)} research={activeResearch} />
+      <ProblemSolver isOpen={isProblemSolverOpen} onClose={() => setIsProblemSolverOpen(false)} problems={activeProblems} />
 
-      {/* IMMERSIVE AVATAR CENTER */}
-      <div className={`perspective-container relative z-10 transition-all duration-1000 transform ${isVRMode ? 'scale-150 rotate-x-6' : 'scale-100'} ${isChatOpen ? 'md:translate-x-[-25%] md:scale-95' : ''} ${sessionState === SessionState.ACTIVE ? 'scale-110 md:scale-135' : 'scale-90 opacity-40 grayscale-0'}`}>
+      <VideoCallOverlay isOpen={isVideoCallOpen} onClose={() => setIsVideoCallOpen(false)} participants={participants} isModelTalking={isModelTalking} isProcessing={false} personality="AI DOST" config={avatarConfig} />
+
+      <div className={`perspective-container relative z-10 transition-all duration-1000 transform ${isVRMode ? 'scale-150 rotate-x-6' : 'scale-100'} ${sessionState === SessionState.ACTIVE ? 'scale-110 md:scale-135' : 'scale-90 opacity-40'}`}>
         <DigitalAvatar isModelTalking={isModelTalking} isActive={sessionState === SessionState.ACTIVE} config={avatarConfig} isProcessing={systemInfo.isSearching} isLightMode={isLightMode} />
       </div>
 
@@ -234,50 +334,42 @@ const App: React.FC = () => {
         <ProjectionDisplay isVisible={sessionState === SessionState.ACTIVE} color={avatarConfig.themeColor} />
       </div>
 
-      {/* PROFESSIONAL MULTI-MODAL HUD - BOTTOM */}
-      <div className="fixed bottom-0 w-full px-6 md:px-14 pb-10 md:pb-14 z-50 pointer-events-none flex justify-center">
-        <div className="w-full max-w-7xl hud-glass px-10 md:px-16 py-8 md:py-10 flex items-center justify-between pointer-events-auto border-white/10 rounded-[3.5rem] shadow-[0_40px_120px_rgba(0,0,0,0.5)]">
+      <div className="fixed bottom-0 w-full px-6 md:px-14 pb-10 z-50 pointer-events-none flex justify-center">
+        <div className="w-full max-w-7xl hud-glass px-10 py-8 flex items-center justify-between pointer-events-auto border-white/10 rounded-[3.5rem] shadow-[0_40px_120px_rgba(0,0,0,0.5)]">
           
           <div className="flex items-center gap-10">
-            <button 
-              onClick={() => setIsCustomizerOpen(!isCustomizerOpen)}
-              className="w-16 h-16 md:w-28 md:h-28 rounded-3xl border-2 border-white/10 flex items-center justify-center bg-black/60 group overflow-hidden transition-all shadow-2xl relative"
-              style={{ borderColor: avatarConfig.themeColor }}
-            >
-              <img src={`https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${avatarConfig.identity}`} className="w-12 h-12 md:w-20 md:h-20 group-hover:scale-110 transition-transform duration-700 relative z-10" />
+            <button onClick={() => setIsCustomizerOpen(!isCustomizerOpen)} className="w-16 h-16 md:w-24 md:h-24 rounded-3xl border-2 border-white/10 flex items-center justify-center bg-black/60 overflow-hidden shadow-2xl" style={{ borderColor: avatarConfig.themeColor }}>
+              <img src={`https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${avatarConfig.identity}`} className="w-12 h-12 md:w-16 md:h-16" />
             </button>
-            <div className="flex flex-col">
-              <span className={`text-sm md:text-2xl orbitron font-black uppercase tracking-widest leading-none ${isLightMode ? 'text-slate-900' : 'text-white'}`} style={!isLightMode ? { textShadow: `0 0 15px ${avatarConfig.themeColor}` } : {}}>MOLTBOT AI DOST</span>
-              <span className="text-[8px] md:text-[11px] orbitron font-bold text-slate-500 uppercase tracking-[0.5em] mt-3">DOST_NEXUS_v5.5</span>
+            <div className="hidden md:flex flex-col">
+              <span className="text-2xl orbitron font-black uppercase text-white tracking-widest leading-none">AI DOST</span>
+              <span className="text-[10px] orbitron font-bold text-slate-500 uppercase mt-2">GLOBAL_OS_V6.0</span>
             </div>
           </div>
 
-          <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center">
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-6">
+             <button onClick={() => setIsDeepSearchOpen(!isDeepSearchOpen)} className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${isDeepSearchOpen ? 'bg-cyan-500 text-white' : 'bg-white/5 text-cyan-500 border border-cyan-500/20'}`}>
+                <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+             </button>
              <button 
               onClick={sessionState === SessionState.ACTIVE ? stopSession : startSession}
-              className={`w-20 h-20 md:w-48 md:h-48 rounded-full flex items-center justify-center transition-all duration-700 relative group overflow-hidden ${sessionState === SessionState.ACTIVE ? 'bg-cyan-500 shadow-[0_0_80px_rgba(6,182,212,0.8)]' : 'bg-slate-200 dark:bg-white/5 border-2 border-white/10 hover:border-cyan-500/50'}`}
+              className={`w-20 h-20 md:w-32 md:h-32 rounded-full flex items-center justify-center transition-all duration-700 relative overflow-hidden ${sessionState === SessionState.ACTIVE ? 'bg-cyan-500 shadow-[0_0_60px_rgba(6,182,212,0.8)]' : 'bg-white/5 border-2 border-white/10'}`}
              >
-                <div className={`absolute -inset-10 rounded-full border-[5px] border-cyan-500/20 animate-ping ${sessionState === SessionState.ACTIVE ? 'block' : 'hidden'}`}></div>
-                <svg className={`w-10 h-10 md:w-24 md:h-24 transition-all duration-700 ${sessionState === SessionState.ACTIVE ? 'text-white scale-110' : 'text-cyan-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
-                </svg>
+                <svg className={`w-10 h-10 md:w-16 md:h-16 ${sessionState === SessionState.ACTIVE ? 'text-white' : 'text-cyan-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
+             </button>
+             <button onClick={() => setIsProblemSolverOpen(!isProblemSolverOpen)} className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${isProblemSolverOpen ? 'bg-emerald-500 text-white' : 'bg-white/5 text-emerald-500 border border-emerald-500/20'}`}>
+                <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
              </button>
           </div>
 
-          <div className="flex items-center gap-4 md:gap-8">
+          <div className="flex items-center gap-4">
              {[
-               { id: 'ovi', icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2', action: () => setIsOviOpen(!isOviOpen), active: isOviOpen },
-               { id: 'call', icon: 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z', action: () => setIsVideoCallOpen(!isVideoCallOpen), active: isVideoCallOpen },
+               { id: 'sat', icon: 'M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z', action: () => setIsSatelliteOpen(!isSatelliteOpen), active: isSatelliteOpen },
                { id: 'chat', icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949', action: () => setIsChatOpen(!isChatOpen), active: isChatOpen },
-               { id: 'n8n', icon: 'M13 10V3L4 14h7v7l9-11h-7z', action: () => setIsN8NOpen(!isN8NOpen), active: isN8NOpen },
                { id: 'social', icon: 'M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z', action: () => setIsSocialOpen(!isSocialOpen), active: isSocialOpen },
              ].map(item => (
-               <button 
-                key={item.id}
-                onClick={item.action}
-                className={`w-12 h-12 md:w-20 md:h-20 rounded-2xl md:rounded-3xl flex items-center justify-center transition-all duration-700 shadow-2xl border-2 ${item.active ? 'bg-cyan-500 border-cyan-400 text-white shadow-[0_0_30px_rgba(6,182,212,0.4)]' : 'bg-white/5 border-white/10 text-slate-500 hover:text-cyan-500 hover:border-cyan-500/40'}`}
-               >
-                 <svg viewBox="0 0 24 24" className="w-6 h-6 md:w-9 md:h-9" fill="none" stroke="currentColor" strokeWidth="2.5"><path d={item.icon}/></svg>
+               <button key={item.id} onClick={item.action} className={`w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center transition-all ${item.active ? 'bg-cyan-500 text-white' : 'bg-white/5 border border-white/10 text-slate-500'}`}>
+                 <svg viewBox="0 0 24 24" className="w-6 h-6 md:w-8 md:h-8" fill="none" stroke="currentColor" strokeWidth="2.5"><path d={item.icon}/></svg>
                </button>
              ))}
           </div>

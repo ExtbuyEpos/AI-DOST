@@ -45,6 +45,43 @@ export const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({
       </div>
 
       <div className="flex flex-col gap-10">
+        {/* NEURAL FORGE - AI Generation Section */}
+        <section className="space-y-5 p-6 rounded-[2rem] bg-cyan-500/5 border border-cyan-500/10">
+          <div className="flex items-center gap-2 mb-2">
+            <svg viewBox="0 0 24 24" className="w-4 h-4 text-cyan-500" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            <label className="text-[10px] orbitron text-cyan-500 font-black uppercase tracking-widest block">Neural_Forge_v1.0</label>
+          </div>
+          
+          <div className="grid grid-cols-1 gap-3">
+            <button 
+              onClick={onGenerateAccessory}
+              disabled={isGeneratingAccessory}
+              style={{ borderColor: `${config.themeColor}33` }}
+              className={`w-full py-4 px-4 bg-black/40 border rounded-2xl flex flex-col items-center justify-center gap-1 transition-all group relative overflow-hidden ${isGeneratingAccessory ? 'opacity-50 cursor-wait' : 'hover:bg-cyan-500/10 hover:border-cyan-500/40'}`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-2 h-2 rounded-full ${isGeneratingAccessory ? 'animate-ping bg-cyan-500' : 'bg-slate-700'}`}></div>
+                <span className="text-[9px] orbitron font-black text-white uppercase tracking-widest">Synth_AI_Gear</span>
+              </div>
+              <span className="text-[7px] font-mono text-cyan-800 uppercase group-hover:text-cyan-600 transition-colors">Using_Spectral_{config.themeColor.slice(1)}</span>
+              {isGeneratingAccessory && <div className="absolute bottom-0 left-0 h-0.5 bg-cyan-500 animate-[load_1.5s_infinite]"></div>}
+            </button>
+
+            <button 
+              onClick={onGenerateTheme}
+              disabled={isGeneratingTheme}
+              className={`w-full py-4 px-4 bg-black/40 border border-white/5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all group relative overflow-hidden ${isGeneratingTheme ? 'opacity-50 cursor-wait' : 'hover:bg-cyan-500/10 hover:border-cyan-500/40'}`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-2 h-2 rounded-full ${isGeneratingTheme ? 'animate-ping bg-cyan-500' : 'bg-slate-700'}`}></div>
+                <span className="text-[9px] orbitron font-black text-white uppercase tracking-widest">Spectral_AI_Shift</span>
+              </div>
+              <span className="text-[7px] font-mono text-cyan-800 uppercase group-hover:text-cyan-600 transition-colors">Neural_Chroma_Selection</span>
+              {isGeneratingTheme && <div className="absolute bottom-0 left-0 h-0.5 bg-cyan-500 animate-[load_1.5s_infinite]"></div>}
+            </button>
+          </div>
+        </section>
+
         {/* FACE UPLINK */}
         <section className="space-y-5">
            <label className="text-[10px] orbitron text-slate-500 font-black uppercase block tracking-widest">Neural_Face_Mapping</label>
@@ -128,7 +165,7 @@ export const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({
           </div>
         </section>
 
-        <button onClick={onGenerate} className="w-full py-6 bg-slate-900 dark:bg-cyan-500 text-white dark:text-black orbitron font-black text-xs rounded-3xl hover:scale-[1.03] transition-all shadow-2xl uppercase tracking-[0.3em]">
+        <button onClick={onGenerate} disabled={isGenerating} className="w-full py-6 bg-slate-900 dark:bg-cyan-500 text-white dark:text-black orbitron font-black text-xs rounded-3xl hover:scale-[1.03] transition-all shadow-2xl uppercase tracking-[0.3em] disabled:opacity-50">
           {isGenerating ? 'Synthesizing_Core...' : 'EXECUTE_MASTER_SYNTH'}
         </button>
       </div>

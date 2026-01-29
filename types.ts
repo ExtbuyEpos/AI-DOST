@@ -1,4 +1,10 @@
 
+export interface User {
+  username: string;
+  id: string;
+  lastLogin: number;
+}
+
 export interface SourceLink {
   uri: string;
   title: string;
@@ -24,7 +30,7 @@ export interface GeneratedAsset {
   };
 }
 
-export type AIPersonality = 'GERVIS' | 'FRIDAY' | 'ALTON' | 'MOLTBOT';
+export type AIPersonality = 'GERVIS' | 'FRIDAY' | 'ALTON' | 'MOLTBOT' | 'AI_DOST';
 
 export interface AvatarConfig {
   hairstyle: string;
@@ -68,7 +74,6 @@ export interface SystemStatus {
   networkType?: string;
 }
 
-// Fix: Added missing AdCampaign type used in PromotionDisplay and OmniMonitor
 export interface AdCampaign {
   brandName: string;
   slogan: string;
@@ -77,7 +82,6 @@ export interface AdCampaign {
   phases: string[];
 }
 
-// Fix: Added missing TrainingSession type used in NeuralTrainingModule
 export interface TrainingSession {
   name: string;
   status: string;
@@ -88,14 +92,12 @@ export interface TrainingSession {
   progress: number;
 }
 
-// Fix: Added missing WhatsAppStatus type used in WhatsAppNode
 export interface WhatsAppStatus {
   isConnected: boolean;
   sessionName: string;
   unreadCount: number;
 }
 
-// Fix: Added missing SocialAccount type used in SocialMediaNode
 export interface SocialAccount {
   platform: 'INSTAGRAM' | 'META' | 'TWITTER' | 'TIKTOK';
   handle: string;
@@ -107,7 +109,6 @@ export interface SocialAccount {
   shopStatus: 'IDLE' | 'PENDING' | 'ACTIVE';
 }
 
-// Fix: Added missing AutoComment type used in SocialMediaNode
 export interface AutoComment {
   id: string;
   platform: 'INSTAGRAM' | 'META' | 'TWITTER' | 'TIKTOK';
@@ -117,7 +118,6 @@ export interface AutoComment {
   timestamp: number;
 }
 
-// Fix: Added missing N8NWorkflow type used in N8NNode
 export interface N8NWorkflow {
   id: string;
   name: string;
