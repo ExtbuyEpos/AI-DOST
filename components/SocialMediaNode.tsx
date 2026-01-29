@@ -170,16 +170,14 @@ export const SocialMediaNode: React.FC<SocialMediaNodeProps> = ({
   const [activeTab, setActiveTab] = useState<'NEXUS' | 'STRATEGY' | 'ANALYTICS' | 'OPERATIONS'>('NEXUS');
   const [liveComments, setLiveComments] = useState<AutoComment[]>([]);
 
-  // Strategy Engine State
-  const [brandContext, setBrandContext] = useState('');
-  const [isGeneratingStrategy, setIsGeneratingStrategy] = useState(false);
-  const [strategyResults, setStrategyResults] = useState<any>({});
-
   useEffect(() => {
     if (activeTab === 'OPERATIONS' && accounts.some(a => a.autoEngageActive)) {
       const interval = setInterval(() => {
+        const connectedPlats = accounts.filter(a => a.isConnected && a.autoEngageActive);
+        if (connectedPlats.length === 0) return;
+
         const platforms: ('INSTAGRAM' | 'META' | 'TWITTER' | 'TIKTOK')[] = ['INSTAGRAM', 'META', 'TWITTER', 'TIKTOK'];
-        const targets = ['@elonmusk', '@zuck', '@garyvee', '@marquesbrownlee', '@techcrunch'];
+        const targets = ['@elonmusk', '@zuck', '@marquesbrownlee', '@techcrunch'];
         const contents = [
           "Neural optimization complete. Engagement rising, Sir.",
           "Market disruption vector identified. Deploying now.",
@@ -187,9 +185,11 @@ export const SocialMediaNode: React.FC<SocialMediaNodeProps> = ({
           "Immediate node engagement triggered on trending thread."
         ];
 
+        const plat = connectedPlats[Math.floor(Math.random() * connectedPlats.length)].platform;
+
         const newComment: AutoComment = {
           id: Math.random().toString(36).substr(2, 9),
-          platform: platforms[Math.floor(Math.random() * platforms.length)],
+          platform: plat,
           targetUser: targets[Math.floor(Math.random() * targets.length)],
           content: contents[Math.floor(Math.random() * contents.length)],
           sentiment: 'POSITIVE',
@@ -261,9 +261,16 @@ export const SocialMediaNode: React.FC<SocialMediaNodeProps> = ({
                                  <div className={`w-14 h-14 rounded-[1.5rem] flex items-center justify-center transition-all ${acc.isConnected ? 'bg-cyan-500/10 border border-cyan-500/30 shadow-lg' : 'bg-slate-200 dark:bg-slate-800'}`}>
                                     <PlatformIcon platform={acc.platform} className="w-7 h-7" useColor={acc.isConnected} />
                                  </div>
-                                 <div className="flex flex-col">
-                                    <span className={`text-[14px] orbitron font-black tracking-tight ${acc.isConnected ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>{acc.platform}</span>
-                                    <span className="text-[9px] font-mono text-cyan-600 font-bold uppercase truncate max-w-[140px]">{acc.isConnected ? acc.handle : 'OFFLINE'}</span>
+                                 <div className="flex flex-col gap-1.5">
+                                    <span className={`text-[14px] orbitron font-black tracking-tight flex items-center gap-2 ${acc.isConnected ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>
+                                       {acc.platform}
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                       <span className="text-[9px] font-mono text-cyan-600 font-bold uppercase truncate max-w-[100px]">{acc.isConnected ? acc.handle : 'OFFLINE'}</span>
+                                       {acc.autoEngageActive && (
+                                          <span className="px-1.5 py-0.5 bg-emerald-500/20 border border-emerald-500/40 text-[6px] orbitron font-black text-emerald-500 rounded animate-pulse">AUTO</span>
+                                       )}
+                                    </div>
                                  </div>
                               </div>
                               <div className={`w-3.5 h-3.5 rounded-full ${acc.isConnected ? 'bg-emerald-500 shadow-[0_0_15px_#10b981]' : 'bg-slate-400'}`}></div>
@@ -272,16 +279,16 @@ export const SocialMediaNode: React.FC<SocialMediaNodeProps> = ({
                            {acc.isConnected && (
                              <div className="flex items-center justify-between pt-6 border-t border-slate-100 dark:border-white/5">
                                 <div className="flex flex-col gap-1.5">
-                                   <span className="text-[9px] orbitron text-slate-400 font-black uppercase">Auto_Pilot</span>
+                                   <span className="text-[9px] orbitron text-slate-400 font-black uppercase tracking-tighter">AI_AUTO_COMMENT</span>
                                    <span className={`text-[10px] orbitron font-black ${acc.autoEngageActive ? 'text-emerald-500 animate-pulse' : 'text-slate-500'}`}>
-                                      {acc.autoEngageActive ? 'ENGAGED' : 'IDLE'}
+                                      {acc.autoEngageActive ? 'ENABLED' : 'DISABLED'}
                                    </span>
                                 </div>
                                 <button 
                                   onClick={() => onToggleAutoEngage(acc.platform)}
-                                  className={`w-14 h-7 rounded-full relative transition-all duration-500 border-2 ${acc.autoEngageActive ? 'bg-emerald-500/20 border-emerald-500' : 'bg-slate-200 dark:bg-slate-800 border-slate-300'}`}
+                                  className={`w-14 h-7 rounded-full relative transition-all duration-500 border-2 ${acc.autoEngageActive ? 'bg-emerald-500/20 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'bg-slate-200 dark:bg-slate-800 border-slate-300'}`}
                                 >
-                                   <div className={`absolute top-1 w-4 h-4 rounded-full transition-all duration-500 ${acc.autoEngageActive ? 'right-1 bg-emerald-500 shadow-[0_0_15px_#10b981]' : 'left-1 bg-slate-500'}`}></div>
+                                   <div className={`absolute top-1 w-4 h-4 rounded-full transition-all duration-500 ${acc.autoEngageActive ? 'right-1 bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'left-1 bg-slate-500'}`}></div>
                                 </button>
                              </div>
                            )}
@@ -292,7 +299,7 @@ export const SocialMediaNode: React.FC<SocialMediaNodeProps> = ({
 
                 <div className="mt-auto p-10 rounded-[3.5rem] bg-cyan-600/5 border border-cyan-500/20 flex flex-col gap-4">
                    <span className="text-[11px] orbitron font-black text-cyan-600 uppercase tracking-widest italic">Dost_Guidance</span>
-                   <p className="text-[10px] font-mono text-slate-600 dark:text-cyan-200 italic leading-relaxed">"Activate individual node auto-engagement to delegate high-frequency community interaction to my sub-agents, Sir."</p>
+                   <p className="text-[10px] font-mono text-slate-600 dark:text-cyan-200 italic leading-relaxed">"Enable AI Auto-Commenting to permit sub-agents to autonomously response to audience interactions with strategic precision."</p>
                 </div>
              </div>
           </div>
@@ -372,8 +379,8 @@ export const SocialMediaNode: React.FC<SocialMediaNodeProps> = ({
                             <div className="flex justify-between items-center pt-12 border-t border-slate-100 dark:border-white/5">
                                <div className="flex items-center gap-12">
                                   <div className="flex flex-col gap-4">
-                                     <span className="text-[11px] orbitron text-slate-400 font-black uppercase tracking-widest">Auto_Engagement</span>
-                                     <button onClick={() => onToggleAutoEngage(acc.platform)} className={`w-16 h-8 rounded-full relative transition-all duration-500 border-2 ${acc.autoEngageActive ? 'bg-emerald-500/20 border-emerald-500' : 'bg-slate-200 dark:bg-slate-800 border-slate-300'}`}>
+                                     <span className="text-[11px] orbitron text-slate-400 font-black uppercase tracking-widest">AI_Auto_Comment</span>
+                                     <button onClick={() => onToggleAutoEngage(acc.platform)} className={`w-16 h-8 rounded-full relative transition-all duration-500 border-2 ${acc.autoEngageActive ? 'bg-emerald-500/20 border-emerald-500 shadow-[0_0_20px_#10b981]' : 'bg-slate-200 dark:bg-slate-800 border-slate-300'}`}>
                                         <div className={`absolute top-1 w-5 h-5 rounded-full transition-all duration-500 ${acc.autoEngageActive ? 'right-1 bg-emerald-500 shadow-[0_0_20px_#10b981]' : 'left-1 bg-slate-500'}`}></div>
                                      </button>
                                   </div>

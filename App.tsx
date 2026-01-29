@@ -101,6 +101,13 @@ const App: React.FC = () => {
     unreadCount: 0
   });
 
+  const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([
+    { platform: 'INSTAGRAM', handle: '@aidost_official', followers: '1.2M', engagementRate: '4.8%', growth: '+12%', isConnected: true, autoEngageActive: false, shopStatus: 'IDLE' },
+    { platform: 'META', handle: 'AI Dost Prime', followers: '850K', engagementRate: '3.2%', growth: '+5%', isConnected: true, autoEngageActive: true, shopStatus: 'IDLE' },
+    { platform: 'TWITTER', handle: '@aidost_nexus', followers: '420K', engagementRate: '5.1%', growth: '+18%', isConnected: false, autoEngageActive: false, shopStatus: 'IDLE' },
+    { platform: 'TIKTOK', handle: '@aidost_shorts', followers: '2.5M', engagementRate: '8.4%', growth: '+22%', isConnected: false, autoEngageActive: false, shopStatus: 'IDLE' },
+  ]);
+
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(() => ({
     hairstyle: 'Sleek-Synthetic', faceType: 'Hyper-Humanoid', themeColor: '#06b6d4', accessory: 'Neural-Visor', identity: 'AI_DOST', voiceName: 'Charon',
     granular: { noseSize: 50, eyeWidth: 50, jawLine: 50, glowIntensity: 50 }
@@ -119,6 +126,7 @@ const App: React.FC = () => {
           const parsed = JSON.parse(storedData);
           if (parsed.avatarConfig) setAvatarConfig(parsed.avatarConfig);
           if (parsed.assets) setAssets(parsed.assets);
+          if (parsed.socialAccounts) setSocialAccounts(parsed.socialAccounts);
         } catch (e) { console.error(e); }
       }
       setLastCommand(`DOST_READY_FOR_MISSION: ${currentUser.username.toUpperCase()}`);
@@ -127,13 +135,33 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (currentUser) {
-      localStorage.setItem(`AIDOST_DATA_${currentUser.username}`, JSON.stringify({ avatarConfig, assets, lastSession: Date.now() }));
+      localStorage.setItem(`AIDOST_DATA_${currentUser.username}`, JSON.stringify({ 
+        avatarConfig, 
+        assets, 
+        socialAccounts,
+        lastSession: Date.now() 
+      }));
     }
-  }, [avatarConfig, assets, currentUser]);
+  }, [avatarConfig, assets, socialAccounts, currentUser]);
 
   useEffect(() => {
     document.body.classList.toggle('light-theme', isLightMode);
   }, [isLightMode]);
+
+  const handleToggleAutoEngage = (platform: string) => {
+    setSocialAccounts(prev => prev.map(acc => 
+      acc.platform === platform ? { ...acc, autoEngageActive: !acc.autoEngageActive } : acc
+    ));
+    const target = socialAccounts.find(a => a.platform === platform);
+    setLastCommand(`AUTO_COMMENT_${!target?.autoEngageActive ? 'ENABLED' : 'DISABLED'}: ${platform}`);
+  };
+
+  const handleConnectSocial = (platform: string) => {
+    setSocialAccounts(prev => prev.map(acc => 
+      acc.platform === platform ? { ...acc, isConnected: true, handle: `@${currentUser?.username}_${platform.toLowerCase()}` } : acc
+    ));
+    setLastCommand(`PLATFORM_SYNCED: ${platform}`);
+  };
 
   const handleGenerateAccessory = async () => {
     setIsGeneratingAccessory(true);
@@ -176,7 +204,6 @@ const App: React.FC = () => {
     setIsGeneratingAvatar(true);
     setLastCommand("EXECUTING_MASTER_IDENTITY_SYNTH...");
     try {
-      // Simulate complex synth
       await new Promise(r => setTimeout(r, 2000));
       await handleGenerateTheme();
       await handleGenerateAccessory();
@@ -319,7 +346,14 @@ const App: React.FC = () => {
       />
       <N8NNode isOpen={isN8NOpen} onClose={() => setIsN8NOpen(false)} workflows={[]} onTrigger={()=>{}} />
       <SatelliteNode isOpen={isSatelliteOpen} onClose={() => setIsSatelliteOpen(false)} location={undefined} />
-      <SocialMediaNode isOpen={isSocialOpen} onClose={() => setIsSocialOpen(false)} accounts={[]} onConnect={()=>{}} onApplyShop={()=>{}} onToggleAutoEngage={()=>{}} />
+      <SocialMediaNode 
+        isOpen={isSocialOpen} 
+        onClose={() => setIsSocialOpen(false)} 
+        accounts={socialAccounts} 
+        onConnect={handleConnectSocial} 
+        onApplyShop={()=>{}} 
+        onToggleAutoEngage={handleToggleAutoEngage} 
+      />
       
       <DeepSearchTerminal isOpen={isDeepSearchOpen} onClose={() => setIsDeepSearchOpen(false)} research={activeResearch} />
       <ProblemSolver isOpen={isProblemSolverOpen} onClose={() => setIsProblemSolverOpen(false)} problems={activeProblems} />
