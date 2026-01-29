@@ -37,10 +37,11 @@ export async function decodeAudioData(
   return buffer;
 }
 
+// Fix: Updated to use 32768 as per Gemini Live API raw PCM encoding guidelines
 export function floatTo16BitPCM(data: Float32Array): Uint8Array {
   const int16 = new Int16Array(data.length);
   for (let i = 0; i < data.length; i++) {
-    int16[i] = Math.max(-1, Math.min(1, data[i])) * 32767;
+    int16[i] = data[i] * 32768;
   }
   return new Uint8Array(int16.buffer);
 }
