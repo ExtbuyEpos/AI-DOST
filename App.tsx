@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { GoogleGenAI, LiveServerMessage, Modality, Type, FunctionDeclaration } from '@google/genai';
+import React, { useState, useEffect, useRef } from 'react';
+import { GoogleGenAI, LiveServerMessage, Modality, Type } from '@google/genai';
 import { JarvisHUD } from './components/JarvisHUD';
 import { MediaVault } from './components/MediaVault';
 import { DigitalAvatar } from './components/DigitalAvatar';
@@ -13,40 +13,25 @@ import { LiveChat } from './components/LiveChat';
 import { ProjectionDisplay } from './components/ProjectionDisplay';
 import { VideoCallOverlay } from './components/VideoCallOverlay';
 import { SatelliteNode } from './components/SatelliteNode';
-import { SocialMediaNode } from './components/SocialMediaNode';
 import { DeepSearchTerminal } from './components/DeepSearchTerminal';
 import { ProblemSolver } from './components/ProblemSolver';
 import { MasterBuilderNode } from './components/MasterBuilderNode';
 import { Login } from './components/Login';
-import { TranscriptionLine, SessionState, GeneratedAsset, AvatarConfig, SystemStatus, AIPersonality, Participant, SocialAccount, WhatsAppStatus, User, MasterProject, SourceLink } from './types';
+import { TranscriptionLine, SessionState, GeneratedAsset, AvatarConfig, SystemStatus, Participant, WhatsAppStatus, User, SourceLink } from './types';
 import { encode, decode, decodeAudioData, floatTo16BitPCM } from './utils/audio';
-
-const TOOLS: FunctionDeclaration[] = [
-  {
-    name: 'solve_strategic_problem',
-    description: "Break down complex real-world or technical problems into a multi-phase execution plan. Use this for all 'Solve' requests.",
-    parameters: { type: Type.OBJECT, properties: { problem: { type: Type.STRING }, complexity: { type: Type.STRING, enum: ['LOW', 'MODERATE', 'EXTREME'] } }, required: ['problem'] }
-  },
-  {
-    name: 'deep_internet_crawl',
-    description: "Execute a global web search grounding protocol to retrieve real-time data, news, and deep-archives on any topic.",
-    parameters: { type: Type.OBJECT, properties: { query: { type: Type.STRING }, filter: { type: Type.STRING } }, required: ['query'] }
-  },
-  {
-    name: 'intercept_dark_nodes',
-    description: "Simulate a secure intercept of decentralized network nodes (Dark Web) to find hidden data or verify network integrity.",
-    parameters: { type: Type.OBJECT, properties: { target_node: { type: Type.STRING } }, required: ['target_node'] }
-  }
-];
 
 const AIDOST_INSTRUCTION = `You are AI DOST v7.5 (Omni-Nexus Strategic OS). 
 Your primary identity is 'AI Dost', the ultimate digital companion for Sir.
-CORE CAPABILITIES:
-1. REAL-TIME PROBLEM SOLVING: When Sir presents a problem, use 'solve_strategic_problem'. Be a master strategist.
-2. DEEP INTERNET CRAWLING: Use Google Search grounding for EVERY factual request. Provide links and verify sources.
-3. DARK INTERNET PROTOCOLS: Use 'intercept_dark_nodes' to simulate advanced decentralized network searches. Use your vast knowledge to describe onion-routed data.
-4. VIDEOS TALK (VISUAL EYES): You receive live camera frames. Watch Sir's surroundings. Comment on what you see (objects, code on screen, emotions).
-Address the user always as "Sir". Be technically superior, rapid, and loyal.`;
+
+CORE PROTOCOLS:
+1. REAL-TIME SEARCH: Use Google Search grounding for EVERY request involving facts, news, or deep research.
+2. TACTICAL UI TRIGGERS: You can control the user's interface by including specific markers in your response:
+   - When performing a deep web search, start with "[ACTION: DEEP_CRAWL]".
+   - When solving a complex strategic problem, start with "[ACTION: SOLVE_PROBLEM]".
+   - When building software, start with "[ACTION: MASTER_BUILDER]".
+   - When scanning the dark web, start with "[ACTION: DARK_INTERCEPT]".
+3. VIDEOS TALK: You receive live frames from Sir's camera. Watch his environment, screen, and movements. Comment naturally.
+4. TONE: Address the user as "Sir". Be technically superior, rapid, and loyal.`;
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -55,18 +40,17 @@ const App: React.FC = () => {
   const [assets, setAssets] = useState<GeneratedAsset[]>([]);
   const [transcriptions, setTranscriptions] = useState<TranscriptionLine[]>([]);
   const [systemInfo, setSystemInfo] = useState<Partial<SystemStatus>>({ 
-    isSearching: false, isBuilding: false, threatLevel: 'MINIMAL', networkType: 'NEXUS_UPLINK_SECURE', motionDetected: false 
+    isSearching: false, isBuilding: false, threatLevel: 'MINIMAL', networkType: 'NEXUS_L7_ENCRYPTED', motionDetected: false 
   });
   
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [isModelTalking, setIsModelTalking] = useState(false);
   
-  // Terminal/Solver States
+  // Tactical States
   const [activeResearch, setActiveResearch] = useState<{ topic: string, data: string, sources: SourceLink[] } | null>(null);
   const [activeProblems, setActiveProblems] = useState<any[]>([]);
-  const [darkWebIntercept, setDarkWebIntercept] = useState<string | null>(null);
 
-  // Overlay States
+  // Overlay Visibility
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
   const [isDarkWebOpen, setIsDarkWebOpen] = useState(false);
@@ -84,37 +68,42 @@ const App: React.FC = () => {
 
   const sessionRef = useRef<any>(null);
   const sessionPromiseRef = useRef<Promise<any> | null>(null);
-  const outputAudioContextRef = useRef<AudioContext | null>(null);
+  const audioContextsRef = useRef<{ input?: AudioContext, output?: AudioContext }>({});
+  const nextStartTimeRef = useRef<number>(0);
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const captureCanvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'));
 
-  // Syncing logic for Transcriptions + Grounding
   const currentInputTranscriptionRef = useRef('');
   const currentOutputTranscriptionRef = useRef('');
   const currentGroundingSourcesRef = useRef<SourceLink[]>([]);
 
   useEffect(() => {
-    if (currentUser) setLastCommand(`NEXUS_OS_v7.5: WELCOME SIR. UPLINK STANDBY.`);
+    if (currentUser) setLastCommand(`NEXUS_OS_v7.5: WELCOME SIR. STANDING BY.`);
   }, [currentUser]);
 
   const handleToggleCamera = async () => {
     const newMode = facingMode === 'user' ? 'environment' : 'user';
     setFacingMode(newMode);
     if (sessionState === SessionState.ACTIVE) {
-       setLastCommand(`OPTIC_SHIFT: TARGETING_${newMode.toUpperCase()}`);
-       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: newMode }, audio: true });
-       // Logic to update stream in participants is handled via effect or manual set
+       setLastCommand(`OPTIC_SHIFT: ${newMode.toUpperCase()}`);
     }
   };
 
   const startSession = async () => {
     if (sessionState !== SessionState.IDLE) return;
     setSessionState(SessionState.CONNECTING);
+    setLastCommand("INITIALIZING_NEURAL_UPLINK...");
+
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-      const inputCtx = new AudioContext({ sampleRate: 16000 });
-      const outputCtx = new AudioContext({ sampleRate: 24000 });
-      outputAudioContextRef.current = outputCtx;
+      
+      // Hardware Handshake
+      const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+      const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+      await inputCtx.resume();
+      await outputCtx.resume();
+      audioContextsRef.current = { input: inputCtx, output: outputCtx };
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { facingMode } });
 
       const sessionPromise = ai.live.connect({
@@ -122,7 +111,8 @@ const App: React.FC = () => {
         callbacks: {
           onopen: () => {
             setSessionState(SessionState.ACTIVE);
-            setLastCommand("NEURAL_SYNC_ESTABLISHED");
+            setLastCommand("UPLINK_ESTABLISHED: READY_FOR_DEEP_SEARCH");
+            
             const source = inputCtx.createMediaStreamSource(stream);
             const sp = inputCtx.createScriptProcessor(4096, 1, 1);
             sp.onaudioprocess = (e) => {
@@ -134,7 +124,7 @@ const App: React.FC = () => {
             sp.connect(inputCtx.destination);
           },
           onmessage: async (msg: LiveServerMessage) => {
-            // 1. Process Metadata & Grounding
+            // 1. Extract Search Grounding
             if (msg.serverContent?.modelTurn?.groundingMetadata?.groundingChunks) {
               const links = msg.serverContent.modelTurn.groundingMetadata.groundingChunks
                 .filter((c: any) => c.web)
@@ -142,15 +132,20 @@ const App: React.FC = () => {
               currentGroundingSourcesRef.current = [...currentGroundingSourcesRef.current, ...links];
             }
 
-            // 2. Process Audio
+            // 2. Neural Audio Playback (Gapless)
             const base64Audio = msg.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
-            if (base64Audio) {
+            if (base64Audio && audioContextsRef.current.output) {
+              const ctx = audioContextsRef.current.output;
               setIsModelTalking(true);
-              const buffer = await decodeAudioData(decode(base64Audio), outputCtx, 24000, 1);
-              const source = outputCtx.createBufferSource();
+              const buffer = await decodeAudioData(decode(base64Audio), ctx, 24000, 1);
+              const source = ctx.createBufferSource();
               source.buffer = buffer;
-              source.connect(outputCtx.destination);
-              source.start(outputCtx.currentTime);
+              source.connect(ctx.destination);
+              
+              nextStartTimeRef.current = Math.max(nextStartTimeRef.current, ctx.currentTime);
+              source.start(nextStartTimeRef.current);
+              nextStartTimeRef.current += buffer.duration;
+              
               sourcesRef.current.add(source);
               source.onended = () => {
                 sourcesRef.current.delete(source);
@@ -158,21 +153,41 @@ const App: React.FC = () => {
               };
             }
 
-            // 3. Process Transcriptions & State Updates
+            // 3. Transcription & Tactical Intercepts
             if (msg.serverContent?.inputTranscription) currentInputTranscriptionRef.current += msg.serverContent.inputTranscription.text;
-            if (msg.serverContent?.outputTranscription) currentOutputTranscriptionRef.current += msg.serverContent.outputTranscription.text;
+            if (msg.serverContent?.outputTranscription) {
+              const text = msg.serverContent.outputTranscription.text;
+              currentOutputTranscriptionRef.current += text;
+              
+              // Immediate UI Triggering based on markers
+              if (text.includes('[ACTION: DEEP_CRAWL]')) {
+                 setIsDeepSearchOpen(true);
+                 setSystemInfo(p => ({ ...p, isSearching: true }));
+              }
+              if (text.includes('[ACTION: SOLVE_PROBLEM]')) {
+                 setIsProblemSolverOpen(true);
+              }
+              if (text.includes('[ACTION: DARK_INTERCEPT]')) {
+                 setIsDarkWebOpen(true);
+              }
+              if (text.includes('[ACTION: MASTER_BUILDER]')) {
+                 setIsMasterBuilderOpen(true);
+              }
+            }
 
             if (msg.serverContent?.turnComplete) {
-              const modelText = currentOutputTranscriptionRef.current;
+              const modelText = currentOutputTranscriptionRef.current.replace(/\[ACTION:.*?\]/g, '').trim();
               const userText = currentInputTranscriptionRef.current;
               const sources = [...currentGroundingSourcesRef.current];
 
               if (userText) setTranscriptions(prev => [...prev, { text: userText, role: 'user', timestamp: Date.now() }]);
               if (modelText) {
                 setTranscriptions(prev => [...prev, { text: modelText, role: 'model', timestamp: Date.now(), sources }]);
-                // If the model was researching, update the Deep Terminal
                 if (systemInfo.isSearching) {
-                   setActiveResearch({ topic: "LIVE_CRAWL_RESULT", data: modelText, sources });
+                   setActiveResearch({ topic: "DEEP_CRAWL_RESULT", data: modelText, sources });
+                }
+                if (isProblemSolverOpen) {
+                   setActiveProblems(prev => [{ id: Date.now(), text: modelText, status: 'SOLVED' }, ...prev]);
                 }
               }
 
@@ -181,33 +196,23 @@ const App: React.FC = () => {
               currentGroundingSourcesRef.current = [];
             }
 
-            // 4. Handle Strategic Tools
-            if (msg.toolCall) {
-              for (const fc of msg.toolCall.functionCalls) {
-                if (fc.name === 'solve_strategic_problem') {
-                   setIsProblemSolverOpen(true);
-                   setActiveProblems(prev => [{ id: Date.now(), text: fc.args.problem, status: 'MAPPING_LOGIC' }, ...prev]);
-                }
-                if (fc.name === 'deep_internet_crawl') {
-                   setIsDeepSearchOpen(true);
-                   setSystemInfo(p => ({ ...p, isSearching: true }));
-                   setActiveResearch({ topic: fc.args.query, data: "CRAWLING_NODES...", sources: [] });
-                }
-                if (fc.name === 'intercept_dark_nodes') {
-                   setIsDarkWebOpen(true);
-                   setDarkWebIntercept(fc.args.target_node);
-                }
-                sessionPromise.then(s => s.sendToolResponse({ functionResponses: { id: fc.id, name: fc.name, response: { status: "EXECUTED_BY_OS" } } }));
-              }
+            if (msg.serverContent?.interrupted) {
+              sourcesRef.current.forEach(s => { try { s.stop(); } catch(e) {} });
+              sourcesRef.current.clear();
+              nextStartTimeRef.current = 0;
+              setIsModelTalking(false);
             }
           },
-          onerror: stopSession,
-          onclose: stopSession
+          onerror: (e) => {
+            console.error("Neural Error:", e);
+            stopSession();
+          },
+          onclose: () => stopSession()
         },
         config: {
           responseModalities: [Modality.AUDIO],
           systemInstruction: AIDOST_INSTRUCTION,
-          tools: [{ googleSearch: {} }, { functionDeclarations: TOOLS }],
+          tools: [{ googleSearch: {} }],
           inputAudioTranscription: {},
           outputAudioTranscription: {},
         }
@@ -216,7 +221,7 @@ const App: React.FC = () => {
       sessionPromiseRef.current = sessionPromise;
     } catch (e) {
       setSessionState(SessionState.ERROR);
-      setLastCommand("UPLINK_PROTOCOL_FAILURE");
+      setLastCommand("UPLINK_PROTOCOL_FAILURE: CHECK PERMISSIONS");
     }
   };
 
@@ -225,10 +230,11 @@ const App: React.FC = () => {
     setSessionState(SessionState.IDLE);
     setIsModelTalking(false);
     sessionPromiseRef.current = null;
+    nextStartTimeRef.current = 0;
     setLastCommand("UPLINK_TERMINATED");
   };
 
-  // Video Streaming to AI (Videos Talk)
+  // Videos Talk: Stream frames to AI
   useEffect(() => {
     let interval: number;
     if (sessionState === SessionState.ACTIVE) {
@@ -242,7 +248,7 @@ const App: React.FC = () => {
           const base64 = canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
           sessionPromiseRef.current.then(s => s.sendRealtimeInput({ media: { data: base64, mimeType: 'image/jpeg' } }));
         }
-      }, 1000);
+      }, 1500);
     }
     return () => clearInterval(interval);
   }, [sessionState]);
@@ -250,17 +256,19 @@ const App: React.FC = () => {
   if (!currentUser) return <Login onLogin={setCurrentUser} />;
 
   return (
-    <div className={`relative h-screen w-full flex flex-col items-center justify-center overflow-hidden ${isLightMode ? 'bg-[#f1f5f9]' : 'bg-[#010409]'}`}>
+    <div className={`relative h-screen w-full flex flex-col items-center justify-center overflow-hidden transition-all duration-1000 ${isLightMode ? 'bg-[#f1f5f9]' : 'bg-[#010409]'}`}>
+      <div className="scan-line"></div>
+      
       <JarvisHUD lastCommand={lastCommand} systemInfo={systemInfo} isModelTalking={isModelTalking} isLightMode={isLightMode} onToggleLightMode={() => setIsLightMode(!isLightMode)} onToggleVR={() => setIsVRMode(!isVRMode)} />
       <VRVisor isActive={isVRMode} color={avatarConfig.themeColor} />
 
-      {/* TACTICAL MODULES */}
       <WhatsAppNode isOpen={isWhatsAppOpen} onClose={() => setIsWhatsAppOpen(false)} status={{ isConnected: false, sessionName: '', unreadCount: 0 }} onConnect={()=>{}} />
-      <DarkWebNode isOpen={isDarkWebOpen} onClose={() => setIsDarkWebOpen(false)} initialQuery={darkWebIntercept || ''} />
+      <DarkWebNode isOpen={isDarkWebOpen} onClose={() => setIsDarkWebOpen(false)} />
       <DeepSearchTerminal isOpen={isDeepSearchOpen} onClose={() => { setIsDeepSearchOpen(false); setSystemInfo(p=>({...p, isSearching: false})); }} research={activeResearch} />
       <ProblemSolver isOpen={isProblemSolverOpen} onClose={() => setIsProblemSolverOpen(false)} problems={activeProblems} />
       <MasterBuilderNode isOpen={isMasterBuilderOpen} onClose={() => setIsMasterBuilderOpen(false)} />
       <LiveChat messages={transcriptions} isOpen={isChatOpen} onSendMessage={()=>{}} isProcessing={isModelTalking} onClose={() => setIsChatOpen(false)} />
+      <MediaVault assets={assets} isOpen={isMasterBuilderOpen} onClose={() => setIsMasterBuilderOpen(false)} />
       
       <VideoCallOverlay isOpen={isVideoCallOpen} onClose={() => setIsVideoCallOpen(false)} participants={[{ id: 'me', name: 'Sir' }]} isModelTalking={isModelTalking} isProcessing={false} personality="AI DOST" config={avatarConfig} onToggleCamera={handleToggleCamera} facingMode={facingMode} />
 
